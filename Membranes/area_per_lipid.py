@@ -1,8 +1,8 @@
 #CALCULATES THE AVERAGE AREA PER LIPID FOR EACH FRAME. IT CAN ALSO MAKE VORONOI PLOTS
 #THIS SHOULD BE GENERALIZED TO GET THE XYZ COORDINATES AND THE AREA PER LIPID OF EACH LIPID
 
-XTC = "POPC2-24_PRO1-2_FIX.xtc"
-TPR = "POPC2-24_PRO1.tpr"
+XTC = "POPC2-24_NPT_FIX.xtc"
+TPR = "POPC2-24_NPT.tpr"
 NAME = XTC[:-8]
 
 from MDAnalysis import *
@@ -21,12 +21,12 @@ sel = {
 
 props_apl={
 "ref"       : 'P31',
-"start_ps"  : 25000,
-"stop_ps"   : 100000,
-"dt"        : 80,
+"start_ps"  : 0,
+"stop_ps"   : 10000,
+"dt"        : 10,
 "up"        : True,
 "down"      : False,
-"n_proc"    : 12,
+"n_proc"    : 8,
 }
 
 def PolyArea(x,y):
@@ -47,30 +47,32 @@ def apl_one_frame(coords_mem):
     vor_leaf = Voronoi(leaflet[:,:2])
     points = []
     areas = []
-    for region in vor_leaf.regions:
+    good_pts = np.zeros(len(vor_leaf.points), dtype='bool')
+
+    for i in range(len(vor_leaf.points)):
+        region = vor_leaf.regions[vor_leaf.point_region[i]]
         if not -1 in region:
-            polygon = [vor_leaf.vertices[i] for i in region]
+            polygon = [vor_leaf.vertices[j] for j in region]
             if polygon:
                 x = np.array([])
                 y = np.array([])
                 for v in polygon:
                     x = np.append(x, v[0])
                     y = np.append(y, v[1])
-                points.append(np.vstack((x,y)).T)
-                areas.append(PolyArea(x, y))
-    nice_points = []
-    nice_areas = []
-    for i in range(len(points)):
-        if np.all(points[i][:,0] > headx_min) and np.all(points[i][:,0] < headx_max) and np.all(points[i][:,1] > heady_min) and np.all(points[i][:,1] < heady_max) :
-            nice_points.append(points[i])
-            nice_areas.append(areas[i])
-    return nice_points, nice_areas, leaflet
+                points = np.vstack((x,y)).T
+                if np.all(points[:,0] > headx_min) and np.all(points[:,0] < headx_max) and np.all(points[:,1] > heady_min) and np.all(points[:,1] < heady_max):
+                    good_pts[i] = True
+                    areas.append(PolyArea(x, y))
+
+    nice_coords = leaflet[good_pts]
+    return nice_coords, areas
 
 def apl_over_time(props):
-    apl_ave = []
-    apl_std = []
     times = []
     all_coords = []
+    out_coords = []
+    out_apls = []
+
     g_ref = sel[props["ref"]]
     for ts in U.trajectory:
         if ts.time >= props["start_ps"] and ts.time%props["dt"]==0:
@@ -81,28 +83,32 @@ def apl_over_time(props):
 
     pool = multiprocessing.Pool(processes = props["n_proc"])
     apl = pool.map(apl_one_frame, all_coords)
+
     for i in range(len(apl)):
-        apl_ave.append(np.mean(apl[i][1]))
-        apl_std.append(np.std(apl[i][1]))
+        out_coords.append(np.array(apl[i][0])/10) #A to nm
+        out_apls.append(np.array(apl[i][1])/100) #A2 to nm2
 
     times = np.array(times)
-    apl_ave = np.array(apl_ave)/100 #100 A2 to nm2
-    apl_std = np.array(apl_std)/100
 
-    return times, apl_ave, apl_std
+    return times, out_coords, out_apls
 
-def write_apl(times, apl_mean, apl_std, props):
-    f = open(NAME + "_apl.sfu", "w")
-    f.write("#Average area per lipid (nm2)\n")
+def write_apl(times, coords, apls, props):
+    f = open(NAME + "_apl.sfu", 'w')
+    f.write("#Area per lipid of each lipid (lipids close to the edges are discarded for instability during the Voronoi analysis)")
     for key, val in props.items():
         f.write("#{:<10}   {:<20}\n".format(key, str(val)))
-    f.write("#Area per lipid (mean of all values +/- deviation of all values): {:.3f} +/- {:.3f} nm2\n".format(np.mean(apl_mean), np.mean(apl_std)))
-    f.write("#Time (ps)\tMean apl (nm2)\tDeviation apl (nm2)\n")
-    for i in range(len(apl_mean)):
-        f.write("{:<9.3f} {:<9.4f} {:<9.4f}\n".format(times[i], apl_mean[i], apl_std[i]))
+
+    f.write("#The following coordinates are those of the heads\n")
+    f.write("#{:<8} {:<9} {:<9}\n".format("X (A)", "Y (A)", "APL"))
+
+    for i in range(len(times)):
+        f.write("#T -> {:<10.3f} ps\n".format(times[i]))
+        for j in range(len(apls[i])):
+            f.write("{:<9.3f} {:<9.3f} {:<9.3f}\n".format(coords[i][j,0], coords[i][j,1], apls[i][j]))
     f.close()
 
 def plot_apl(points, areas, leaflet):
+    #Deprecated
     fig = plt.figure()
     ax = plt.axes()
     cmap = cm.PRGn
@@ -117,7 +123,6 @@ def plot_apl(points, areas, leaflet):
     plt.colorbar(sm)
     plt.show()
     plt.close()
-
-
-time, aplm, apls = apl_over_time(props_apl)
-write_apl(time, aplm, apls, props_apl)
+    
+time, coords, apls = apl_over_time(props_apl)
+write_apl(time, coords, apls, props_apl)
