@@ -1,9 +1,6 @@
-#Membrane must be centered!
-
-#CALCULATES THE XYZ COORDINATES OF EACH LIPID HEAGROUP AND THE ANGLE BETWEEN THE THE PHOSPHATE AND CHOLINE GROUPS 
-XTC = "POPC2-24_PRO1-2_FIX.xtc"
-TPR = "POPC2-24_PRO1.tpr"
-NAME = XTC[:-8]
+XTC = "NP18-POPC2-54_PRO1-37_FIX_D.xtc" #D has the membrane centered
+TPR = "NP18-POPC2-54_PRO1.tpr"
+NAME = XTC[:-10]
 
 import math
 import numpy as np
@@ -19,13 +16,13 @@ sel = {
 }
 
 props_PCDistr={
-"up"        : False,
-"down"      : True,
+"up"        : True,
+"down"      : False,
 "ref"       : 'P31',  #Used to find the membranes midplane
 "angle_atoms"    : ["P31", "N31"], #The vector is drawn from the first to the second. They must be in the residue named PC
-"start_ps"  : 25000,
-"stop_ps"   : 100000,
-"dt"        : 20,
+"start_ps"  : 200000,
+"stop_ps"   : 500000,
+"dt"        : 100,
 }
 
 def calc_angle(vectors1, vectors2):
@@ -55,7 +52,8 @@ def PCAngleZ(props):
         if ts.time >= props['start_ps'] and ts.time <= props['stop_ps'] and ts.time%props['dt']==0:
             times.append(ts.time)
             print("Time -> {:.1f} ps".format(ts.time))
-            ndx_mols = np.where(sgn*(g_ref.positions[:,2] - ts.dimensions[2]/2) > 0)[0] #determines that the headgroup is in the right leaflet
+            midplane = g_ref.center_of_mass()[2]
+            ndx_mols = np.where(sgn*(g_ref.positions[:,2] - midplane) > 0)[0] #determines that the headgroup is in the right leaflet
             vecs = g_a2.positions[ndx_mols] - g_a1.positions[ndx_mols]
             v_ref = np.repeat([z_ax], len(vecs), axis=0)
             angles = calc_angle(vecs, v_ref)
