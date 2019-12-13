@@ -1,14 +1,13 @@
 #Membrane must be centered!
 
 #CALCULATES ORDER PARAMETERS BASED ON THE C-H ANGLES. IT CURRENTLY FAILS FOR THE TERMINAL CARBONS AND UNSATURATED CARBONS (ONLY WORKS FOR CH2s)
-XTC = "POPC2-24_PRO1-2_FIX.xtc"
-TPR = "POPC2-24_PRO1.tpr"
+XTC = "POPC2-24_NPT_FIX.xtc"
+TPR = "POPC2-24_NPT.tpr"
 NAME = XTC[:-8]
 
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.distance import cdist
-from Extras import *
 from MDAnalysis import *
 plt.rcParams["font.family"] = "Arial"
 z = 22
@@ -22,35 +21,45 @@ sel = {
 }
 
 props_order = {
-'up'        : False,
-'down'      : True,
+'up'        : True,
+'down'      : False,
 'heads'     : 'P31',
 'chains'    : ['OL', 'PA'], #residue names of the aliphatic chains
-'anames'    : [["C12", "C13", "C14", "C15", "C16", "C17", "C18", "C19", "C110", "C111", "C112", "C113", "C114", "C115", "C116", "C117"],
-                ["C12", "C13", "C14", "C15", "C16", "C17", "C18", "C19", "C110", "C111", "C112", "C113", "C114", "C115"]],  #Lists must be in order chain1-chain2. The atoms must be in the same order as going down the chain. The first atom of each list must be in PC
+'anames'    : [["C12", "C13", "C14", "C15", "C16", "C17", "C18", "C19", "C110", "C111", "C112", "C113", "C114", "C115", "C116", "C117", "C118"],
+                ["C12", "C13", "C14", "C15", "C16", "C17", "C18", "C19", "C110", "C111", "C112", "C113", "C114", "C115", "C116"]],  #Lists must be in order chain1-chain2. The atoms must be in the same order as going down the chain. The first atom of each list must be in PC
 'start_ps'  : 0,#25000,
-'stop_ps'   : 50,#100000,
-'dt'        : 20,
+'stop_ps'   : 100,#100000,
+'dt'        : 50,
 }
 
 def calc_order(v_origin, v_target):
     cos = np.dot(v_origin, v_target)/(np.linalg.norm(v_origin)*np.linalg.norm(v_target))
+    #ang = np.arccos(cos)
+    #cos = np.cos(ang)
     P2 = 0.5*(3*cos**2-1)
     return P2
 
 def lipid_order(props):
     if props['up']:
         sgn = 1
-    else:
+    elif props['down']:
         sgn = -1
     z_ax = np.array([0,0,sgn])
 
-    g_heads = sel[props['heads']]
-    print("Reference group: {}".format(props['heads']))
     g_anames = [[U.select_atoms("resname {} and name {}".format(props['chains'][0], aname)) for aname in props['anames'][0]], [U.select_atoms("resname {} and name {}".format(props['chains'][1], aname)) for aname in props['anames'][1]]]
-    g_Hs = [U.select_atoms("name H* and resname {}".format(props['chains'][0])), U.select_atoms("name H* and resname {}".format(props['chains'][1]))]
+    g_Hs = [[U.select_atoms("name H* and resname {} and around 1.11 name {}".format(props['chains'][0], aname)) for aname in props['anames'][0]], [U.select_atoms("name H* and resname {} and around 2 name {}".format(props['chains'][1], aname)) for aname in props['anames'][1]]]
     times = []
     results = {}
+
+    print("Reference group: {}".format(props['heads']))
+    g_heads = sel[props['heads']]
+    ndx_leaf = sgn*(g_heads.positions[:,2]-g_heads.center_of_mass()[2])>0
+    g_leaf_heads = g_heads[ndx_leaf]
+    g_chain1 = U.select_atoms("resname {}".format(props['chains'][0])).residues
+    g_leaf_chain1 = g_chain1[ndx_leaf]
+    g_chain2 = U.select_atoms("resname {}".format(props['chains'][1])).residues
+    g_leaf_chain2 = g_chain2[ndx_leaf]
+    g_leaf_chains = [g_leaf_chain1, g_leaf_chain2]
 
     for ts in U.trajectory:
         if ts.time >= props['start_ps'] and ts.time <= props['stop_ps'] and ts.time%props['dt']==0:
@@ -58,23 +67,21 @@ def lipid_order(props):
             results["T{:.1f}_pos".format(ts.time)] = []
             results["T{:.1f}_ord".format(ts.time)] = []
             print("Time -> {:.1f} ps".format(ts.time))
-            for a, ah in enumerate(g_heads.positions):
-                head = ah
-                if sgn*(ah[2] - ts.dimensions[2]/2) > 0: #determines that the headgroup is in the right leaflet
-                    ord_res = []
-                    for g_tail, gH in zip(g_anames, g_Hs):
-                        for g_a1 in g_tail:
-                            xyz_c = g_a1.positions[a]
-                            CH_dists = np.linalg.norm(gH.positions - xyz_c, axis=0)
-                            ndx_Hs = np.argsort(CH_dists)[:2]
-                            xyz_hs = gH[ndx_Hs].positions
-                            diffs = xyz_hs - xyz_c
-                            order1 = calc_order(diffs[0], z_ax)
-                            order2 = calc_order(diffs[1], z_ax)
-                            order = (order1 + order2)/2
-                            ord_res.append(order)
-                    results["T{:.1f}_pos".format(ts.time)].append(head)
-                    results["T{:.1f}_ord".format(ts.time)].append(ord_res)
+
+            for a, ah in enumerate(g_leaf_heads.positions):
+                ord_res = []
+                for c, g_leaf_chain in enumerate(g_leaf_chains):
+                    for g_C, g_H in zip(g_anames[c], g_Hs[c]):
+                        g_carbon = g_C & g_leaf_chain[a].atoms
+                        g_hydrogens = g_H & g_leaf_chain[a].atoms
+                        if len(g_hydrogens)==0:
+                            print(g_carbon.names, g_hydrogens.names)
+                        diff = g_hydrogens.positions - g_carbon.positions
+                        order = [calc_order(d, z_ax) for d in diff]
+                        order = np.mean(order)
+                        ord_res.append(order)
+                results["T{:.1f}_pos".format(ts.time)].append(ah)
+                results["T{:.1f}_ord".format(ts.time)].append(ord_res)
             results["T{:.1f}_pos".format(ts.time)] = np.array(results["T{:.1f}_pos".format(ts.time)])
             results["T{:.1f}_ord".format(ts.time)] = np.array(results["T{:.1f}_ord".format(ts.time)])
 
