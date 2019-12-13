@@ -8,9 +8,7 @@ NAME = XTC[:-8]
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.distance import cdist
-from Extras import *
 from MDAnalysis import *
-from physt import special
 plt.rcParams["font.family"] = "Arial"
 z = 22
 
@@ -29,9 +27,9 @@ props_order = {
 'chains'    : ['OL', 'PA'], #residue names of the aliphatic chains
 'anames'    : [["C21", "C12", "C13", "C14", "C15", "C16", "C17", "C18", "C19", "C110", "C111", "C112", "C113", "C114", "C115", "C116", "C117", "C118"],
                 ["C11", "C12", "C13", "C14", "C15", "C16", "C17", "C18", "C19", "C110", "C111", "C112", "C113", "C114", "C115", "C116"]],  #Lists must be in order chain1-chain2. The atoms must be in the same order as going down the chain. The first atom of each list must be in PC
-'start_ps'  : 25000,
+'start_ps'  : 0,
 'stop_ps'   : 100000,
-'dt'        : 20,
+'dt'        : 100,
 }
 
 def calc_order(v_origin, v_target):
@@ -46,15 +44,16 @@ def lipid_order(props):
         sgn = -1
     z_ax = np.array([0,0,sgn])
 
-    g_heads = sel[props['heads']]
-    print("Reference group: {}".format(props['heads']))
-    g_anames = [[U.select_atoms("resname PC and name {}".format(props['anames'][0][0]))], [U.select_atoms("resname PC and name {}".format(props['anames'][1][0]))]]
-    for c, chain in enumerate(props['chains']):
-        for aname in props['anames'][c][1:]:
-            g_tmp = U.select_atoms("resname {} and name {}".format(chain, aname))
-            g_anames[c].append(g_tmp)
     times = []
     results = {}
+
+    print("Reference group: {}".format(props['heads']))
+    g_heads = sel[props['heads']]
+    ndx_leaf = sgn*(g_heads.positions[:,2]-g_heads.center_of_mass()[2])>0
+    g_leaf_heads = g_heads[ndx_leaf]
+    g_anames = [[U.select_atoms("resname PC and name {}".format(props['anames'][0][0]))], [U.select_atoms("resname PC and name {}".format(props['anames'][1][0]))]]
+    g_anames[0] += [U.select_atoms("resname {} and name {}".format(props['chains'][0], aname)) for aname in props['anames'][0][1:]]
+    g_anames[1] += [U.select_atoms("resname {} and name {}".format(props['chains'][1], aname)) for aname in props['anames'][1][1:]]
 
     for ts in U.trajectory:
         if ts.time >= props['start_ps'] and ts.time <= props['stop_ps'] and ts.time%props['dt']==0:
@@ -63,17 +62,15 @@ def lipid_order(props):
             results["T{:.1f}_ord".format(ts.time)] = []
             print("Time -> {:.1f} ps".format(ts.time))
             for a, ah in enumerate(g_heads.positions):
-                head = ah
-                if sgn*(ah[2] - ts.dimensions[2]/2) > 0: #determines that the headgroup is in the right leaflet
-                    ord_res = []
-                    for g_tail in g_anames:
-                        for g_a1, g_a2, g_a3 in zip(g_tail[2:], g_tail[1:-1], g_tail[:-2]):
-                            #a1/2/3 have the same atoms of the same chains at a certain frame that are on the right leaflet
-                            v31 = g_a1.positions[a] - g_a3.positions[a]
-                            order = calc_order(v31, z_ax)
-                            ord_res.append(order)
-                    results["T{:.1f}_pos".format(ts.time)].append(head)
-                    results["T{:.1f}_ord".format(ts.time)].append(ord_res)
+                ord_res = []
+                for g_tail in g_anames:
+                    for g_a1, g_a2, g_a3 in zip(g_tail[2:], g_tail[1:-1], g_tail[:-2]):
+                        #a1/2/3 have the same atoms of the same chains at a certain frame that are on the right leaflet
+                        v31 = g_a1.positions[a] - g_a3.positions[a]
+                        order = calc_order(v31, z_ax)
+                        ord_res.append(order)
+                results["T{:.1f}_pos".format(ts.time)].append(ah)
+                results["T{:.1f}_ord".format(ts.time)].append(ord_res)
             results["T{:.1f}_pos".format(ts.time)] = np.array(results["T{:.1f}_pos".format(ts.time)])
             results["T{:.1f}_ord".format(ts.time)] = np.array(results["T{:.1f}_ord".format(ts.time)])
 
