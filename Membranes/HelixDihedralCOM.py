@@ -1,3 +1,7 @@
+"""
+Calculates the rolling angle of an alpha-helix. The rolling angle is a dihedral between three atoms and the Z direction (0, 0, 1).
+The rolling angle is reported as a function of the distance between COMs of the helix and the membrane.
+"""
 XTC = "MD/NP61-POPC6-46-r1_MD@@@.xtc"
 TPR = "MD/NP61-POPC6-46-r1_MD@@@.tpr"
 NAME = XTC[3:-4]
