@@ -1,5 +1,6 @@
-#CALCULATES THE DIHEDRAL ANGLE DEFINED BY 3 PARSED ATOMS AND THE Z AXIS (PERPENDICULAR TO THE MEMBRANE) AS A FUNCTION OF TIME
-
+"""
+Calculates rolling angle of an alpha helix. The rolling angle is defined as a dihedral between three atoms and the Z direction (1, 0, 0)
+"""
 XTC = "NP61-POPC6-46_PRO1_FIX.xtc" 
 TPR = "NP61-POPC6-46_PRO1.tpr"
 NAME = XTC[:-8]
