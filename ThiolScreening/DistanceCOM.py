@@ -1,3 +1,7 @@
+"""
+Calculates the distance between the COM of the analytes and the COM of the metallic core
+"""
+
 XTC = "XXX_NVT_FIX.xtc"
 TPR = "XXX_NVT.tpr"
 NAME = XTC[:-8]
