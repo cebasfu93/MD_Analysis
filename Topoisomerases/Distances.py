@@ -1,4 +1,8 @@
-#Nanoparticle must be centered
+"""
+Calculates distance between COM of specificied groups. 
+Not generalized yet. 
+Specific for Topoisomerase 2alpha complexed with ARN compound.
+"""
 XTC = "SYS-1_PRO1-5_VIS.xtc" #D has the NP centered
 TPR = "SYS-1_PRO1.tpr"
 NAME = XTC[:-8]
