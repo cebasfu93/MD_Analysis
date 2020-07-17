@@ -1,3 +1,8 @@
+"""
+Calulates the order parameter for all the given atoms in the lipid chains (using the Ci-1 - Ci - Ci+1 vector).
+It prints the XY coordinate of the phosphate headgroup followed by all the order parameters belonging to that lipid.
+Useful for building bidimensional maps of the lipid order.
+"""
 XTC = "NP61-POPC6-46_PRO1_Pt_FIX.xtc"
 TPR = "NP61-POPC6-46_Pt512.tpr"
 NAME = XTC[:-8]
