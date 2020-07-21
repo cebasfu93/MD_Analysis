@@ -72,7 +72,7 @@ def write_bind_time(props, dists, bind_times):
     for target, dist, bind_time in zip(props['targets'], dists, bind_times):
         f.write("#TARGET GROUP: {}\n".format(target))
         for d, bt in zip(dist, bind_time):
-            f.write("{:<10.3f}  {:>10.1f}\n".format(d, bt))
+            f.write("{:<10.1f}  {:>10.3f}\n".format(bt, d))
     f.close()
 
 dists, bind_times = bind_time(props_bind_time)
