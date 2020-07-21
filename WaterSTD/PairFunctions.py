@@ -47,7 +47,7 @@ def pair_manual(props):
     print("Reference group: {}".format(props['ref']))
     for target in props['targets']:
         print("Current target: {}".format(target))
-        pair = np.array([])
+        counts = np.zeros(len(R)-1)
         g_target = sel[target]
         for ts in U.trajectory:
             if ts.time >= props['start_ps'] and ts.time <= props['stop_ps'] and ts.time % props['dt'] == 0:
@@ -55,11 +55,10 @@ def pair_manual(props):
                 x_target = g_target.positions
                 dists = cdist(x_ref, x_target)
                 dists = dists[dists<=props['r_range'][1]]
-                pair = np.append(pair, dists)
+                counts += np.histogram(dists, bins=R)[0]
             elif ts.time > props['stop_ps']:
                 break
 
-        counts, bins = np.histogram(pair, bins = R)
         counts = counts/(n_frames*g_ref.n_atoms)
         n_target = np.sum(counts)
         norm = props['r_range'][1]**3 / (3*n_target * np.power(R[1:], 2) * dr)
