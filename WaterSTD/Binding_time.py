@@ -68,7 +68,7 @@ def write_bind_time(props, dists, bind_times):
     for key, val in props.items():
         f.write("#{:<10}   {:<20}\n".format(key, str(val)))
 
-    f.write("#Minimum distance between anchor and target during the binding event (nm) \t Binding residence time (ps)\n")
+    f.write("#Minimum inter-COM distance between anchor and target during the binding event (nm) \t Binding residence time (ps)\n")
     for target, dist, bind_time in zip(props['targets'], dists, bind_times):
         f.write("#TARGET GROUP: {}\n".format(target))
         for d, bt in zip(dist, bind_time):
