@@ -1,8 +1,8 @@
 """
-For every binding event, it reports the minimum distance of the analytes to any gold atom and the binding residence time.
+For every binding event, it reports the minimum analyte-gold inter-COM distance and the binding residence time.
 """
-XTC = "NP22dp-53_PRO1-11_FIX.xtc"
-TPR = "NP22dp-53_PRO1.tpr"
+XTC = "NP22sp-53_PRO1-10_FIX.xtc"
+TPR = "NP22sp-53_PRO1.tpr"
 NAME = XTC[:-8]
 
 import math
@@ -16,14 +16,14 @@ DT = U.trajectory[0].dt
 sel = {
 "all_gold" : U.select_atoms("name AU AUS AUL"),
 "mono_H"       : U.select_atoms("resname L22 and name H*"),
-"DOP_H"     : U.select_atoms("resname DOP and name H*"),
+"SER_H"     : U.select_atoms("resname SER and name H*"),
 "PHE_H"     : U.select_atoms("resname PHE and name H*"),
 }
 
 props_bind_time = {
 'anchor'    : 'all_gold', #the script reports the minimum distance respect to this group
 'ref'       : "mono_H",
-'targets'    : ["DOP_H", "PHE_H"],
+'targets'    : ["SER_H", "PHE_H"],
 'start_ps'  : 0,
 'stop_ps'   : 1000000,
 'd_max'     : 4, #A, threshold distance for magnetization transfer
@@ -51,7 +51,7 @@ def bind_time(props):
 
         gates = bound[1:,:] - bound[:-1,:]
         on_switch, off_switch = [list(np.where(gate==1)[0]) for gate in gates.T], [list(np.where(gate==-1)[0]) for gate in gates.T]
-        min_dists = [[np.min([np.min(cdist(g_residues[i].positions, g_anchor.positions)) for ts in U.trajectory[a:b]]) for a,b in zip(on, off)] for i, (on, off) in enumerate(zip(on_switch, off_switch))]
+        min_dists = [[np.min([np.linalg.norm(g_residues[i].center_of_mass() - g_anchor.center_of_mass()) for ts in U.trajectory[a:b]]) for a,b in zip(on, off)] for i, (on, off) in enumerate(zip(on_switch, off_switch))]
         durations = [[b-a for a,b in zip(on, off)] for on, off in zip(on_switch, off_switch)]
         min_dists = flatten_list(min_dists)
         durations = flatten_list(durations)
