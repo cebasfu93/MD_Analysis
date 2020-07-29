@@ -1,3 +1,6 @@
+"""
+Calculates the charge density in the XY plane at various values for Z. Centered at the ref group.
+"""
 XTC = "T1-N40-I30_AA_PRO1-6_FIX.xtc"
 TPR = "T1-N40-I30_AA_PRO1.tpr"
 NAME = XTC[:-8]
