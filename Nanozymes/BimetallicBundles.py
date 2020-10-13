@@ -18,9 +18,9 @@ DT = U.trajectory[0].dt
 print(DT)
 
 props = {
-'d_thresh'  : 5,
+'d_thresh'  : 900,#5,
 'start_ps'  : 0, #123
-'stop_ps'   : 1000000,# 567
+'stop_ps'   : 30000,# 567
 }
 
 g_au  = sel['all_gold']
@@ -40,7 +40,8 @@ def zn_matrix():
             XX1, XX2 = np.meshgrid(g_zn.positions[:,0], g_zn.positions[:,0])
             YY1, YY2 = np.meshgrid(g_zn.positions[:,1], g_zn.positions[:,1])
             ZZ1, ZZ2 = np.meshgrid(g_zn.positions[:,2], g_zn.positions[:,2])
-            D = np.linalg.norm(np.swapaxes(np.array([XX1+XX2, YY1+YY2, ZZ1+ZZ2]), 0, 2) - g_au.center_of_mass(), axis=2)
+            D = np.swapaxes(np.array([XX1+XX2, YY1+YY2, ZZ1+ZZ2])*0.5, 0, 2) - g_au.center_of_mass()
+            D = np.linalg.norm(D, axis=2)
             matrix.append(M)
             dists.append(D)
         elif ts.time >= props['stop_ps']:
@@ -56,11 +57,14 @@ def process():
     triu_mask = np.triu_indices(g_zn.n_atoms)
     zn_dists[:,triu_mask[0], triu_mask[1]] = 1000
     zn_cond = zn_dists <= props['d_thresh']
+
+    fracs = {}
+    fracs['ZnZn'] = calculate_occupancy(zn_cond)
+
     zn_cond = zn_cond.reshape((len(zn_dists), g_zn.n_atoms**2))
     com_dists = com_dists.reshape((len(zn_dists), g_zn.n_atoms**2))
 
-    fracs, restimes, moments = {}, {}, {}
-    fracs['ZnZn'] = calculate_occupancy(zn_cond)
+    restimes, moments = {}, {}
     restimes['ZnZn'] = calculate_residence_time(zn_cond, com_dists)
     moments['ZnZn'] = statistical_moments(restimes['ZnZn'][0])
     return fracs, restimes, moments
@@ -102,13 +106,21 @@ def bootstrap(onoff, boot_iter=10000, boot_size=0.01):
         boot_ndxs = np.random.choice(pts_ndxs, size=int(boot_size*len(onoff)), replace=True)
         boot_pts = onoff[boot_ndxs]
         boots.append(np.mean(boot_pts))
-
     return np.mean(boots), np.std(boots)
 
-def calculate_occupancy(onoff_raw):
-    onoff = onoff_raw.flatten()
+def calculate_occupancy(onoff_raw_3d):
+    """
+    100% Means 1 pair is present (in average) throughout the whole simulation
+    The maximum is n_pairs*100%, meaning that all pairs are present throughout the whole simulation
+    """
+    tril_mask = np.tril_indices(g_zn.n_atoms, k=-1)
+    onoff = onoff_raw_3d[:,tril_mask[0], tril_mask[1]]
+    n_pairs = onoff.shape[1]
+    onoff = onoff.flatten()
+
     frac_ave, frac_std = bootstrap(onoff)
-    return frac_ave*100, frac_std*100
+
+    return frac_ave*100*n_pairs, frac_std*100*n_pairs
 
 def statistical_moments(btimes):
     if len(btimes) != 0:
@@ -123,7 +135,7 @@ def statistical_moments(btimes):
     return first, second
 
 def write_output(fractions, residence_times, moments):
-    f = open(NAME+"_restimes_mono.sfu", "w")
+    f = open(NAME+"_restimes_znsites.sfu", "w")
     #Writes input parameters
     f.write("#Residence time (ps) for bound, precatalytic, precatalytic_solvated, and active complexes for mechanism 1,2, and 3, and the minimum distance between phosphorus and Au C.O.M.\n")
     for key, val in props.items():
@@ -139,7 +151,7 @@ def write_output(fractions, residence_times, moments):
     #Writes residence times
     for key, val in residence_times.items():
         f.write("\n#@@@{}\n".format(key))
-        f.write("#{:<7}(ps) {:<8}(nm) {:<8}(fr) {:<8}(fr) {:<8}(id) {:<8}(id)\n".format("Restime", "DistP", "Start", "End", "Resid1", "Resid2"))
+        f.write("#{:<7}(ps) {:<8}(nm) {:<8}(fr) {:<8}(fr) {:<8}(id) {:<8}(id)\n".format("Restime", "DistZnAu", "Start", "End", "Resid1", "Resid2"))
         for pt in zip(*val):
             f.write(("{:<12} "*len(pt)).format(*pt) + "\n")
     f.close()
