@@ -5,6 +5,9 @@ from collections import defaultdict
 from tqdm import tqdm
 
 class Pair:
+    """
+    Object that stores pairs of atoms in contact (when Hs are distinguishable).
+    """
     def __init__(self, ix_ref, ix_target, ndx_gref, ndx_gtarget, res_ref, res_target, time, dist):
         assert len(ndx_gref) == 1
         assert len(ndx_gtarget) == 1
@@ -18,12 +21,18 @@ class Pair:
         self.dist = dist                #distance between target and anchor
 
 class ResPair:
+    """
+    Object that stores residues that are in contact (when Hs are not distinguishable).
+    """
     def __init__(self, res_target, time, dist):
         self.rtarget = res_target
         self.time = time
         self.dist = dist
 
 class STDEvent:
+    """
+    Object that stores a (Water) STD event properties (when Hs are distinguishable).
+    """
     def __init__(self, pair):
         self.aref = pair.aref
         self.atarget = pair.atarget
@@ -34,10 +43,18 @@ class STDEvent:
         self.alive = False
 
     def extend_event(self, pair):
+        """
+        Catenates two Pair objects belonging to a single event.
+        """
         self.time.append(pair.time)
         self.dist.append(pair.dist)
 
     def compress_event(self, U, props, DT, func=np.mean):
+        """
+        Calculates summary properties of the event.
+        That is, those that will be ultimately printed out.
+        The distances to the anchor are combined with the function func.
+        """
         self.anchor_dist = func(self.dist)/10 #A to nm
         self.tmin = min(self.time)
         self.tmax = max(self.time) + DT
@@ -46,6 +63,9 @@ class STDEvent:
             self.alive = True
 
 class ResSTDEvent:
+    """
+    Object that stores a (Water) STD event properties (when Hs are not distinguishable).
+    """
     def __init__(self, respair):
         self.rtarget = respair.rtarget
         self.time = [respair.time]
@@ -53,10 +73,18 @@ class ResSTDEvent:
         self.alive = False
 
     def extend_event(self, respair):
+        """
+        Catenates two ResPair objects belonging to a single event.
+        """
         self.time.append(respair.time)
         self.dist.append(respair.dist)
 
     def compress_event(self, U, props, DT, func=np.mean):
+        """
+        Calculates summary properties of the event.
+        That is, those that will be ultimately printed out.
+        The distances to the anchor are combined with the function func.
+        """
         self.anchor_dist = func(self.dist)/10 #A to nm
         self.tmin = min(self.time)
         self.tmax = max(self.time)
@@ -65,6 +93,9 @@ class ResSTDEvent:
             self.alive = True
 
 def search_STDevents(U, props, pairs, DT):
+    """
+    Combines the list (pairs) of objects Pair that belong to the same binding event (when Hs are distinguishable).
+    """
     events = {}
     counters = defaultdict(int)
 
@@ -90,6 +121,9 @@ def search_STDevents(U, props, pairs, DT):
     return events
 
 def search_resSTDevents(U, props, respairs, DT):
+    """
+    Combines the list (pairs) of objects Pair that belong to the same binding event (when Hs are not distinguishable).
+    """
     events = {}
     counters = defaultdict(int)
     print("Searching events")
@@ -111,6 +145,10 @@ def search_resSTDevents(U, props, respairs, DT):
     return events
 
 def binding_time_STD(U, props, sel):
+    """
+    Makes dictionary with lists of objects type Pair.
+    The output pairs are the H-H contacts that account for normal STD events (when Hs are distinguishable).
+    """
     all_pairs = {}
     g_anchor = sel[props['anchor']]
     n_read = (props['stop_ps'] - props['start_ps'])//U.trajectory[0].dt + 1
@@ -148,6 +186,10 @@ def binding_time_STD(U, props, sel):
     return all_pairs
 
 def binding_time_resSTD(U, props, sel):
+    """
+    Makes dictionary with lists of objects type ResPair.
+    The output pairs are the H-H contacts that account for normal STD events (when Hs are not distinguishable).
+    """
     all_respairs = defaultdict(list)
     g_anchor = sel[props['anchor']]
     n_read = int((props['stop_ps'] - props['start_ps'])//U.trajectory[0].dt)
@@ -171,6 +213,10 @@ def binding_time_resSTD(U, props, sel):
     return all_respairs
 
 def binding_time_WSTD(U, props, sel):
+    """
+    Makes dictionary with lists of objects type Pair.
+    The output pairs are the H-H contacts that account for Water STD events (when Hs are distinguishable).
+    """
     all_pairs = {}
     g_anchor = sel[props['anchor']]
     n_read = (props['stop_ps'] - props['start_ps'])//U.trajectory[0].dt + 1
@@ -210,6 +256,10 @@ def binding_time_WSTD(U, props, sel):
     return all_pairs
 
 def binding_time_resWSTD(U, props, sel):
+    """
+    Makes dictionary with lists of objects type Pair.
+    The output pairs are the H-H contacts that account for Water STD events (when Hs are not distinguishable).
+    """
     all_respairs = defaultdict(list)
     g_anchor = sel[props['anchor']]
     n_read = int((props['stop_ps'] - props['start_ps'])//U.trajectory[0].dt)
@@ -233,6 +283,11 @@ def binding_time_resWSTD(U, props, sel):
     return all_respairs
 
 def write_events_STD(events, props, sel, name, identical_ref, identical_target):
+    """
+    Writes a file describing all the STD events (when Hs are distinguishable).
+    The output includes atom indices, residue indices, and chemical position of the reference and target groups
+    as well as initial time, final time, duration, and distance to the anchor for each event.
+    """
     f = open(name + "_btimes_STD.sfu", 'w')
 
     f.write("#Binding residence time (ps) from (nonpolar) H-H contacts\n")
@@ -262,6 +317,11 @@ def write_events_STD(events, props, sel, name, identical_ref, identical_target):
     f.close()
 
 def write_events_resSTD(events, props, sel, name):
+    """
+    Writes a file describing all the STD events (when Hs are not distinguishable).
+    The output includes residue index of the target groups
+    as well as initial time, final time, duration, and distance to the anchor for each event.
+    """
     f = open(name + "_btimes_resSTD.sfu", 'w')
 
     f.write("#Binding residence time (ps) from (nonpolar) H-H contacts (the Hs of the monolayer and an analyte are all considered identical)\n")
@@ -283,6 +343,11 @@ def write_events_resSTD(events, props, sel, name):
     f.close()
 
 def write_events_WSTD(events, props, sel, name, identical_ref, identical_target):
+    """
+    Writes a file describing all the Water STD events (when Hs are distinguishable).
+    The output includes atom indices, residue indices, and chemical position of the reference and target groups
+    as well as initial time, final time, duration, and distance to the anchor for each event.
+    """
     f = open(name + "_btimes_WSTD.sfu", 'w')
 
     f.write("#Binding residence time (ps) from (nonpolar) H-H contacts\n")
@@ -312,6 +377,11 @@ def write_events_WSTD(events, props, sel, name, identical_ref, identical_target)
     f.close()
 
 def write_events_resWSTD(events, props, sel, name):
+    """
+    Writes a file describing all the Water STD events (when Hs are not distinguishable).
+    The output includes residue index of the target groups
+    as well as initial time, final time, duration, and distance to the anchor for each event.
+    """
     f = open(name + "_btimes_resWSTD.sfu", 'w')
 
     f.write("#Binding residence time (ps) from (nonpolar) H-H contacts (the Hs of the tumbling water and an analyte are all considered identical)\n")
