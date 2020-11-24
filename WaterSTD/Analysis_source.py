@@ -11,48 +11,59 @@ pd.set_option('display.max_rows', 20)
 
 #GENERIC FUNCITONS
 def center_bins(bins):
-	"""
-	Converts n bin edges into n-1 centered bins.
-	"""
+    """
+    Converts n bin edges into n-1 centered bins.
+    """
     return 0.5*(bins[1:] + bins[:-1])
 
 #IMPORT AND CLEANING FUNCTIONS
-def clean_input_data(data, target):
-	"""
-	Converts raw data imported by import_events() (STD or Water STD) and makes it a 
-	pandas dataframe indexed by chemical positions of the reference and target, and the residue id 
-	of the reference and target. 
-	
-	Target is the key of the data dictionary to process.
-	
-	The resulting dataframe reports the starting and finishing times of each binding event, the duration,
-	the distance to the anchor and wether the event was turned on when the simulation finished.
-	"""
-    colnames = ["aref", "atarget", "rref", "rtarget", "tmin", "tmax", "dt", "dist", "alive"]
-    dtypes = {"aref"   : int,
-             "atarget" : int,
-             "rref"    : int,
-             "rtarget" : int,
+def clean_input_data(data, target, resSTD=False):
+    """
+    Converts raw data imported by import_events() (STD or Water STD) and makes it a 
+    pandas dataframe indexed by chemical positions of the reference and target, and the residue id 
+    of the reference and target. 
+    
+    Target is the key of the data dictionary to process.
+    
+    The resulting dataframe reports the starting and finishing times of each binding event, the duration,
+    the distance to the anchor and wether the event was turned on when the simulation finished.
+    
+    Setting resSTD to True, imports data according to .sfu files that consider Hs as distinguishable.
+    That is, less columns are imported (because they are absent in the imported file).
+    """
+    colnames = ["rtarget", "tmin", "tmax", "dt", "dist", "alive"]
+    dtypes = {"rtarget" : int,
              "tmin"    : float,
              "tmax"    : float,
              "dt"      : float,
              "dist"    : float,
-             "alive"   : bool}#,
+             "alive"   : bool}
+    if not resSTD:
+        colnames = ["aref", "atarget", "rref"] + colnames
+        dtypes["aref"] = int
+        dtypes["atarget"] = int
+        dtypes["rref"] = int
+    
     df = pd.DataFrame(data, columns=colnames)
     df = df.astype(dtypes)
     df["tmin"] /= 1000 #ps to nm
     df["tmax"] /= 1000 #ps to nm
     df["dt"] /= 1000 #ps to nm
-    ndx_cols = ["rref", "rtarget", "aref", "atarget"]
-    df.set_index(ndx_cols, inplace=True)
-    df.sort_values(ndx_cols, inplace=True)
+    if not resSTD:
+        ndx_cols = ["rref", "rtarget", "aref", "atarget"]
+        df.set_index(ndx_cols, inplace=True)
+        df.sort_values(ndx_cols, inplace=True)
     return df
 
-def import_events(fname, ignore_ns=0.0):
-	"""
-	Reads STD or Water STD text file into a dictionary with one element for each target analyte in the file.
-	It call clean_input_data() to convert each value of the dictionary into a pandas dataframe.
-	"""
+def import_events(fname, ignore_ns=0.0, resSTD=False):
+    """
+    Reads STD or Water STD text file into a dictionary with one element for each target analyte in the file.
+    It call clean_input_data() to convert each value of the dictionary into a pandas dataframe.
+    Setting resSTD to True, imports data according to .sfu files that consider Hs as distinguishable.
+    """
+    tndx = 6
+    if resSTD:
+        tndx = 3
     ignore_ps = ignore_ns*1000
     print("Importing {}".format(fname))
     f = open(fname, "r")
@@ -64,21 +75,21 @@ def import_events(fname, ignore_ns=0.0):
             key = line.split()[-1]
         if "#" not in line and "@" not in line:
             ls = line.split()
-            if float(ls[6])>ignore_ps:
+            if float(ls[tndx])>ignore_ps:
                 if "***" not in line:
                     data[key].append(ls+[False])
                 else:
                     data[key].append(ls[:-1] + [True])
     for key in data.keys():
-        data[key] = clean_input_data(data[key], key[:3])
+        data[key] = clean_input_data(data[key], key[:3], resSTD=resSTD)
     return data
 
 #FUNCTIONS FOR COMPRESSING CHEMICAL SIMILARITY, EQUIVALENT POSITIONS AND RESIDUES
 def touch(i, j):
-	"""
-	Return True if the binding event i overlaps at any point with j. 
-	An overlap at a single point is still considered an overlap.
-	"""
+    """
+    Return True if the binding event i overlaps at any point with j. 
+    An overlap at a single point is still considered an overlap.
+    """
     if i.tmin <= j.tmin and j.tmin <= i.tmax:
         return True
     elif i.tmin <= j.tmax and j.tmax <= i.tmax:
@@ -89,14 +100,14 @@ def touch(i, j):
         return False
 
 def clean_subdf(x):
-	"""
-	Takes a dataframe x and assigns the minimum starting time to tmin, 
-	the maximum finishing time to tmax, and 
-	a linearly weighted distance according to the overlap of each binding event to dist.
-	
-	The resulting dataframe is redundant (all the rows are the same event).
-	This function is to be followed by drop_duplicates().
-	"""
+    """
+    Takes a dataframe x and assigns the minimum starting time to tmin, 
+    the maximum finishing time to tmax, and 
+    a linearly weighted distance according to the overlap of each binding event to dist.
+
+    The resulting dataframe is redundant (all the rows are the same event).
+    This function is to be followed by drop_duplicates().
+    """
     tmin = x.tmin.min()
     tmax = x.tmax.max()
     weighted = ((x.dt*x.dist)/x.dt.sum()).sum()
@@ -104,12 +115,12 @@ def clean_subdf(x):
     return x
 
 def clean_group(df):
-	"""
-	Consecutive or overlapping binding events of the dataframe df are merged with clean_subdf() and touch().
-	
-	The resulting dataframe has redundant entries. 
-	That is, the overlapped events are combined into copies of the same, elongated event.
-	"""
+    """
+    Consecutive or overlapping binding events of the dataframe df are merged with clean_subdf() and touch().
+
+    The resulting dataframe has redundant entries. 
+    That is, the overlapped events are combined into copies of the same, elongated event.
+    """
     if len(df) > 1:
         contacts = np.array([[touch(i,j) for m, j in df.iterrows()] for n, i in df.iterrows()])
         pivots = [i for i in range(1, len(contacts)) if np.sum(contacts[:i,i])==0] + [len(contacts)]
@@ -119,13 +130,13 @@ def clean_group(df):
 
 def compress_chemical_positions(data, propname=None):
     """
-	Takes the data dataframe of STD or Water STD events imported by import_events().
-	It merges consecutive or overlapping binding events that share a property propname.
-	
-	If propname is none, then the identical chemical positions are compressed.
-    
-	The resulting dataframe does not have propname (it collapses upon grouping)
-	"""
+    Takes the data dataframe of STD or Water STD events imported by import_events().
+    It merges consecutive or overlapping binding events that share a property propname.
+
+    If propname is none, then the identical chemical positions are compressed.
+
+    The resulting dataframe does not have propname (it collapses upon grouping)
+    """
     groupcols = list(data.index.names)
     data = data.reset_index()
     data.sort_values("tmin", inplace=True)
@@ -143,14 +154,14 @@ def compress_chemical_positions(data, propname=None):
 
 #PLOTTING
 def plot_btime(key, btimes, thresh_ns=25, ignore_ns=0.5, xlim=(0,25), ylim=(1,2.5), starson=False):
-	"""
-	Scatters dist vs. dt for the dataframe btimes[key] ignoring the events shorter than ignore_ns.
-	It also plots a histogram of dt truncating the histogram between ignore_ns and thresh_ns.
-	
-	xlim and ylim set the limits of the plots' axes.
-	
-	If starson is True, it draws black crosses on the events that were alive when the simulation finished.
-	"""
+    """
+    Scatters dist vs. dt for the dataframe btimes[key] ignoring the events shorter than ignore_ns.
+    It also plots a histogram of dt truncating the histogram between ignore_ns and thresh_ns.
+
+    xlim and ylim set the limits of the plots' axes.
+
+    If starson is True, it draws black crosses on the events that were alive when the simulation finished.
+    """
     fig, axs = plt.subplots(figsize=(12,3), ncols=2, nrows=1, subplot_kw={'xlim':xlim}, gridspec_kw={'wspace':0.25})
     print(key)
     data = btimes[key]
@@ -176,20 +187,22 @@ def plot_btime(key, btimes, thresh_ns=25, ignore_ns=0.5, xlim=(0,25), ylim=(1,2.
     plt.close()
 
 def prop_boxplot(propname, btimes, colors, ignore_ns=0.5, ylim=(0,1), ylabel='Residence time (ns)', nticks=4, starson=False, normdistr=False):
-	"""
-	It makes a boxplot for the column propname 
-	in all the dataframes of btimes ignoring events shorter than ignore_ns.
-	It reports the number of samples on each boxplot.
-	
-	If normdistr is True, the dataframes in btimes are resampled to the size of the smallest dataframe.
-	
-	If starson is True, it draws black crosses on the events that were alive when the simulation finished.
-	
-	ylim and ylabel set the limits and labels of the y axis in the plot, respectively.
-	nticks set the number of ticks on the y axis of the plot.
-	"""
+    """
+    It makes a boxplot for the column propname 
+    in all the dataframes of btimes ignoring events shorter than ignore_ns.
+    It reports the number of samples on each boxplot.
+
+    If normdistr is True, the dataframes in btimes are resampled to the size of the smallest dataframe.
+
+    If starson is True, it draws black crosses on the events that were alive when the simulation finished.
+
+    ylim and ylabel set the limits and labels of the y axis in the plot, respectively.
+    nticks set the number of ticks on the y axis of the plot.
+    """
     toplot = ['DOP', 'DON', 'SER', 'SEN', 'PHC', 'PHN', 'PHE', 'PHA']
     labels = ['Dop(+)', 'Dop', 'Ser(+)', 'Ser', 'Phe(+)', 'Phe', 'Phe(+/-)', 'Phe(-)']
+    #toplot.remove('SER')
+    #labels.remove('Ser(+)')
     bp = dict(linestyle='-', lw=2, color='k', facecolor='r')
     fp = dict(marker='o', ms=8, ls='none', mec='k', mew=1, alpha=0.1)
     mp = dict(ls='-', lw=1.5,color='k')
@@ -228,15 +241,15 @@ def prop_boxplot(propname, btimes, colors, ignore_ns=0.5, ylim=(0,1), ylabel='Re
     plt.close()
 
 def plot_cluster(toplot, btimes, colors, ignore_ns=0.5, xlim=(0,20), ylim=(1,2.5), starson=False):
-	"""
-	Scatters dist vs. dt for dataframes the dataframes in btimes with keys in the list toplot.
-	The plot ignores events shorter than ignore_ns.
-	colors is a dictionary with keys toplot containing the color for each scattered dataframe.
-	
-	xlim and ylim set the limits of the plots' axes.
-	
-	If starson is True, it draws black crosses on the events that were alive when the simulation finished.
-	"""
+    """
+    Scatters dist vs. dt for dataframes the dataframes in btimes with keys in the list toplot.
+    The plot ignores events shorter than ignore_ns.
+    colors is a dictionary with keys toplot containing the color for each scattered dataframe.
+
+    xlim and ylim set the limits of the plots' axes.
+
+    If starson is True, it draws black crosses on the events that were alive when the simulation finished.
+    """
     fig, ax = plt.subplots(figsize=(7,3), nrows=1, ncols=1)
     ax.tick_params(labelsize=Z)
     ax.set_xlabel('Residence time (ns)', fontsize=Z)
@@ -255,20 +268,20 @@ def plot_cluster(toplot, btimes, colors, ignore_ns=0.5, xlim=(0,20), ylim=(1,2.5
     plt.close()
 
 def plot_cumevents(toplot, btimes, colors, ignore_ns=0.5, xlim=(0,5), nbins=80, ylim=None, normed=False):
-	"""
-	It makes a cumulative histogram from the column dt of the 
-	dataframes in btimes with keys in the list toplot. 
-	The plot ignores the events shorter than ignore_ns.
-	colors is a dictionary with keys toplot containing the color for each scattered dataframe.
-	
-	If normed is True, then the cumulative counts are normalized so the maximum is curve is 1.
-	
-	If the tuple xlim has xlim[0] > xlim[1], then the histogram is cumulated backwards.
-	
-	nbins is the number of bins in which to histogram the data.
-	xlim sets the range on which to histogram the data.
-	xlim and ylim set the limits of the plots' axes.
-	"""
+    """
+    It makes a cumulative histogram from the column dt of the 
+    dataframes in btimes with keys in the list toplot. 
+    The plot ignores the events shorter than ignore_ns.
+    colors is a dictionary with keys toplot containing the color for each scattered dataframe.
+
+    If normed is True, then the cumulative counts are normalized so the maximum is curve is 1.
+
+    If the tuple xlim has xlim[0] > xlim[1], then the histogram is cumulated backwards.
+
+    nbins is the number of bins in which to histogram the data.
+    xlim sets the range on which to histogram the data.
+    xlim and ylim set the limits of the plots' axes.
+    """
     ns = []
     fig, ax = plt.subplots(figsize=(7,2.5), nrows=1, ncols=1)
     ax.tick_params(labelsize=Z)
@@ -297,23 +310,23 @@ def plot_cumevents(toplot, btimes, colors, ignore_ns=0.5, xlim=(0,5), nbins=80, 
     plt.close()
 
 def plot_positions(keys, btimes, colors, ignore_ns=0.5, req_sample_size=100, normdistr=False):
-	"""
-	It makes three plots for each dataframe of btimes with a key in the list keys. 
-	The colors of the three plots is determined by the dictionary colors with keys in the list keys.
-	The plots ignore the events shorter than ignore_ns.
-	
-	1) The number of events occuring between each different pair of reference-target chemical positions.
-	2) The total bound time between each different pair of reference-target chemical positions.
-	3) The average binding time per event for each different pair of reference-target chemical positions.
-	
-	The size of the points is proportionately scaled
-	and it is normalized to the biggest value plotted.
-	That is, all plots 1 are normalized to the same maximum. The same for plots 2 and 3.
-	
-	Pairs with less than req_sample_size are ommitted and indicated by a black cross.
-	
-	If normdistr is True, the dataframes in btimes are resampled to the size of the smallest dataframe.
-	"""
+    """
+    It makes three plots for each dataframe of btimes with a key in the list keys. 
+    The colors of the three plots is determined by the dictionary colors with keys in the list keys.
+    The plots ignore the events shorter than ignore_ns.
+
+    1) The number of events occuring between each different pair of reference-target chemical positions.
+    2) The total bound time between each different pair of reference-target chemical positions.
+    3) The average binding time per event for each different pair of reference-target chemical positions.
+
+    The size of the points is proportionately scaled
+    and it is normalized to the biggest value plotted.
+    That is, all plots 1 are normalized to the same maximum. The same for plots 2 and 3.
+
+    Pairs with less than req_sample_size are ommitted and indicated by a black cross.
+
+    If normdistr is True, the dataframes in btimes are resampled to the size of the smallest dataframe.
+    """
     n_samples_list, size_list, speeds_list, times_list, naref_list, natarget_list = [], [], [], [], [], []
     for key in keys:
         data = btimes[key]
@@ -376,18 +389,18 @@ def plot_positions(keys, btimes, colors, ignore_ns=0.5, req_sample_size=100, nor
     plt.close()
 
 def plot_barpositions(keys, btimes, colors, ignore_ns=0.5, req_sample_size=100, ylim1=None, ylim2=None):
-	"""
-	It plots the total number of events and total bound time 
-	at each chemical position of the references and targets.
-	The plots ignore events shorter than ignore_ns.
-	One curve is plotted for each dataframe in the dictionary btimes with keys in the list keys.
-	The colors of the curves is determined by the dictionary colors with keys in the list keys.
-	
-	Pairs with less than req_sample_size are ommitted and indicated by a black cross.
-	
-	ylim1 and ylim2 set the limits of the y axes for 
-	the total number of events and total bound time, respectively.
-	"""
+    """
+    It plots the total number of events and total bound time 
+    at each chemical position of the references and targets.
+    The plots ignore events shorter than ignore_ns.
+    One curve is plotted for each dataframe in the dictionary btimes with keys in the list keys.
+    The colors of the curves is determined by the dictionary colors with keys in the list keys.
+
+    Pairs with less than req_sample_size are ommitted and indicated by a black cross.
+
+    ylim1 and ylim2 set the limits of the y axes for 
+    the total number of events and total bound time, respectively.
+    """
     naref_list, natarget_list = [], []
     for key in keys:
         data = btimes[key]
