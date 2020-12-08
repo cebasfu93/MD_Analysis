@@ -85,8 +85,8 @@ def pair_rdf(U, props, sel):
         rdfs[target] = counts
     return R_center, rdfs
 
-def write_rdf(space, rdf_dict, properties):
-    f = open(NAME + "_rdf.sfu", 'w')
+def write_rdf(space, rdf_dict, properties, name):
+    f = open(name + "_rdf.sfu", 'w')
     values = []
     for key, val in properties.items():
         f.write("#{:<10}   {:<20}\n".format(key, str(val)))
@@ -103,8 +103,8 @@ def write_rdf(space, rdf_dict, properties):
         f.write("\n")
     f.close()
 
-def write_rdf_cum(space, rdf_dict, properties):
-    f = open(NAME + "_rdf_cum.sfu", 'w')
+def write_rdf_cum(space, rdf_dict, properties, name):
+    f = open(name + "_rdf_cum.sfu", 'w')
     values = []
     for key, val in properties.items():
         f.write("#{:<10}   {:<20}\n".format(key, str(val)))
@@ -121,8 +121,8 @@ def write_rdf_cum(space, rdf_dict, properties):
         f.write("\n")
     f.close()
     
-def write_pair(space, pair_dict, props):
-    f = open(NAME + "_pair.sfu", 'w')
+def write_pair(space, pair_dict, props, name):
+    f = open(name + "_pair.sfu", 'w')
     values = []
     for key, val in props.items():
         f.write("#{:<10}   {:<20}\n".format(key, str(val)))
@@ -139,11 +139,11 @@ def write_pair(space, pair_dict, props):
         f.write("\n")
     f.close()
     
-def pipeline_rdf(U, props, sel):
+def pipeline_rdf(U, props, sel, name):
     r, rdfs, rdfs_cum = rdf(U, props, sel)
-    write_rdf(r, rdfs, props)
-    write_rdf_cum(r, rdfs_cum, props)
+    write_rdf(r, rdfs, props, name)
+    write_rdf_cum(r, rdfs_cum, props, name)
     
-def pipeline_pair(U, props, sel):
+def pipeline_pair(U, props, sel, name):
     r, rdfs = pair_rdf(U, props, sel)
-    write_pair(r, rdfs, props)
+    write_pair(r, rdfs, props, name)
