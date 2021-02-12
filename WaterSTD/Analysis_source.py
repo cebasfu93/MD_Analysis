@@ -220,10 +220,10 @@ def plot_pi_angles_dist(pistack, d_max=0.5, sk=1, savefig=False, prefix='test'):
                         cax=a, ax=a, ticks=np.linspace(0.3, d_max, 3))
     cbar.ax.tick_params(labelsize=Z)
     cbar.ax.set_ylabel("Centroid distance (nm)", fontsize=Z)
-    plt.show()
     if savefig:
         plt.savefig(prefix + "_angdist.png", format='png',
                     bbox_inches='tight', dpi=300, transparent=True)
+    plt.show()
     plt.close()
 
 
@@ -264,10 +264,10 @@ def plot_pi_angles_hist(pistack, d_max=0.5, sk=1, savefig=False, prefix='test'):
                                           cmap=cmap), cax=a, ax=a, ticks=np.linspace(0, hmax, 5))
     cbar.ax.tick_params(labelsize=Z)
     cbar.ax.set_ylabel("Number of events", fontsize=Z)
-    plt.show()
     if savefig:
         plt.savefig(prefix + "_anghist.png", format='png',
                     bbox_inches='tight', dpi=300, transparent=True)
+    plt.show()
     plt.close()
 
 
