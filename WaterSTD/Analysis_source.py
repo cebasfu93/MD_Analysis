@@ -7,6 +7,7 @@ from tqdm import tqdm
 from matplotlib import cm
 from matplotlib.colors import Normalize
 from boxplot_2d import boxplot_2d
+from scipy.optimize import curve_fit
 
 Z = 17
 RS = 666
@@ -19,6 +20,20 @@ pd.set_option('display.max_rows', 20)
 
 
 # GENERIC FUNCITONS
+def exponential(x, A, B, C):
+    """
+    Standard exponential function (used for fittings)
+    """
+    return A * np.exp(-x * B) + C
+
+
+def exponential_solvex(y, A, B, C):
+    """
+    Standard exponential function solving for x
+    """
+    return 1 / B * (np.log(A / (y - C)))
+
+
 def center_bins(bins):
     """
     Converts n bin edges into n-1 centered bins.
@@ -64,6 +79,27 @@ def clean_input_data(data, target, resSTD=False):
         df.set_index(ndx_cols, inplace=True)
         df.sort_values(ndx_cols, inplace=True)
     return df
+
+
+def import_wshell(fname):
+    """
+    Imports text file with water exchange rate between shells. The columns should be organized as followed:
+    i) Distance of the water from the gold core center of mass
+    ii) Water exchange rate
+    """
+    f = open(fname, "r")
+    fl = f.readlines()
+    f.close()
+
+    data = []
+    for line in tqdm(fl):
+        if "#" not in line:
+            data.append(line.split())
+    data = np.array(data, dtype='float')
+    clean = {'dist': data[:, 0],
+             'exc': data[:, 1]
+             }
+    return clean
 
 
 def import_pistacking(fname):
@@ -192,6 +228,45 @@ def compress_chemical_positions(data, propname=None):
 
 
 # PLOTTING
+def plot_wshell(wshell, frac_c=0.95, savefig=False, prefix='test'):
+    """
+    Plots the water exchange rate between shells and it fits an exponential function for values greater than 0
+    It shows straight lines when the exchange rate is frac_c times the long-rage value of the fit
+    That is, C in the A * np.exp(-x * B) + C fit
+    """
+    fig = plt.figure(figsize=(6, 2.5))
+    ax = plt.axes()
+    ax.tick_params(labelsize=Z)
+    ax.set_xlim(0, 4.4)
+    ax.set_ylim(0, 0.6)
+    ax.set_xlabel('Distance from gold C.O.M. (nm)', fontsize=Z)
+    ax.set_ylabel('Water exchange', fontsize=Z)
+    dist = wshell['dist'] / 10  # A to nm
+
+    fit_mask = wshell['exc'] > 0
+    fit_x = dist[fit_mask]
+    fit_y = wshell['exc'][fit_mask]
+    popt, _ = curve_fit(exponential, fit_x, fit_y, p0=(-4, 1, 0.6))
+    print("{:.2f} e^-{:.2f}x + {:.2f}".format(*popt))
+
+    ax.plot(dist, exponential(dist, *popt), lw=2, c='k', ls='--', label='Exponential fit')
+    ax.plot(dist, wshell['exc'], lw=2.5, c=(1, 0.1, 0.3), alpha=0.6, label='MD simulations')
+
+    mark_y = popt[2] * frac_c
+    mark_x = exponential_solvex(mark_y, *popt)
+    print("{:.1f}% --> ({:.2f}, {:.2f})".format(frac_c * 100, mark_x, mark_y))
+    ax.axvline(mark_x, c='k', lw=0.7)
+    ax.axhline(mark_y, c='k', lw=0.7)
+    ax.legend(fontsize=Z, handletextpad=0.4)
+    if savefig:
+        plt.savefig(prefix + "_expfit.png", format='png',
+                    bbox_inches='tight', dpi=300, transparent=True)
+        plt.savefig(prefix + "_expfit.svg", format='svg',
+                    bbox_inches='tight')
+    plt.show()
+    plt.close()
+
+
 def plot_pi_angles_dist(pistack, d_max=0.5, sk=1, savefig=False, prefix='test'):
     """
     Scatters the tilt and phase angles, coloring each point according to the distance between the centroids
