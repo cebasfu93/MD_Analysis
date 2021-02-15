@@ -8,6 +8,7 @@ from matplotlib import cm
 from matplotlib.colors import Normalize
 from boxplot_2d import boxplot_2d
 from scipy.optimize import curve_fit
+from sklearn.metrics import r2_score
 
 Z = 17
 RS = 666
@@ -234,30 +235,32 @@ def plot_wshell(wshell, frac_c=0.95, savefig=False, prefix='test'):
     It shows straight lines when the exchange rate is frac_c times the long-rage value of the fit
     That is, C in the A * np.exp(-x * B) + C fit
     """
-    fig = plt.figure(figsize=(6, 2.5))
+    fig = plt.figure(figsize=(5, 2.5))
     ax = plt.axes()
     ax.tick_params(labelsize=Z)
     ax.set_xlim(0, 4.4)
-    ax.set_ylim(0, 0.6)
+    ax.set_ylim(0, 60)
     ax.set_xlabel('Distance from gold C.O.M. (nm)', fontsize=Z)
-    ax.set_ylabel('Water exchange', fontsize=Z)
+    ax.set_ylabel('Water exchange rate\n' + r'($nm^{-2} ns^{-1}$)', fontsize=Z)
     dist = wshell['dist'] / 10  # A to nm
-
-    fit_mask = wshell['exc'] > 0
+    exc = wshell['exc'] / 0.01  # frame to ns (this assumes a timestep of 10 fs)
+    fit_mask = exc > 0
     fit_x = dist[fit_mask]
-    fit_y = wshell['exc'][fit_mask]
-    popt, _ = curve_fit(exponential, fit_x, fit_y, p0=(-4, 1, 0.6))
+    fit_y = exc[fit_mask]
+    popt, _ = curve_fit(exponential, fit_x, fit_y, p0=(-400, 1, 60))
     print("{:.2f} e^-{:.2f}x + {:.2f}".format(*popt))
+    print("R2: {:.3f}".format(r2_score(fit_y, exponential(fit_x, *popt))))
 
-    ax.plot(dist, exponential(dist, *popt), lw=2, c='k', ls='--', label='Exponential fit')
-    ax.plot(dist, wshell['exc'], lw=2.5, c=(1, 0.1, 0.3), alpha=0.6, label='MD simulations')
-
+    ax.errorbar(dist, exc, lw=2.5, c=(1, 0.1, 0.3), alpha=0.5,
+                label='MD simulations', fmt='o', ms=5, mew=0.5, mec='k', zorder=10)
+    ax.plot(dist, exponential(dist, *popt), lw=2.5, c='k', ls='-',
+            label='Exponential fit', zorder=1, alpha=1)
     mark_y = popt[2] * frac_c
     mark_x = exponential_solvex(mark_y, *popt)
     print("{:.1f}% --> ({:.2f}, {:.2f})".format(frac_c * 100, mark_x, mark_y))
     ax.axvline(mark_x, c='k', lw=0.7)
     ax.axhline(mark_y, c='k', lw=0.7)
-    ax.legend(fontsize=Z, handletextpad=0.4)
+    ax.legend(fontsize=Z - 2, handletextpad=0.4)
     if savefig:
         plt.savefig(prefix + "_expfit.png", format='png',
                     bbox_inches='tight', dpi=300, transparent=True)
