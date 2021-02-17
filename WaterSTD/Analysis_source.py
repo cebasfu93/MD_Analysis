@@ -28,6 +28,13 @@ def exponential(x, A, B, C):
     return A * np.exp(-x * B) + C
 
 
+def exponential_zero(x, A, B):
+    """
+    Standard exponential function (used for fittings)
+    """
+    return A * np.exp(-x * B)
+
+
 def exponential_solvex(y, A, B, C):
     """
     Standard exponential function solving for x
@@ -229,17 +236,17 @@ def compress_chemical_positions(data, propname=None):
 
 
 # PLOTTING
-def plot_wshell(wshell, frac_c=0.95, savefig=False, prefix='test'):
+def plot_wshell(wshell, frac_c=1, savefig=False, prefix='test'):
     """
     Plots the water exchange rate between shells and it fits an exponential function for values greater than 0
     It shows straight lines when the exchange rate is frac_c times the long-rage value of the fit
     That is, C in the A * np.exp(-x * B) + C fit
     """
-    fig = plt.figure(figsize=(5, 2.5))
+    fig = plt.figure(figsize=(5, 2.6))
     ax = plt.axes()
     ax.tick_params(labelsize=Z)
     ax.set_xlim(0, 4.4)
-    ax.set_ylim(0, 60)
+    ax.set_ylim(0, 65)
     ax.set_xlabel('Distance from gold C.O.M. (nm)', fontsize=Z)
     ax.set_ylabel('Water exchange rate\n' + r'($nm^{-2} ns^{-1}$)', fontsize=Z)
     dist = wshell['dist'] / 10  # A to nm
@@ -251,16 +258,18 @@ def plot_wshell(wshell, frac_c=0.95, savefig=False, prefix='test'):
     print("{:.2f} e^-{:.2f}x + {:.2f}".format(*popt))
     print("R2: {:.3f}".format(r2_score(fit_y, exponential(fit_x, *popt))))
 
-    ax.errorbar(dist, exc, lw=2.5, c=(1, 0.1, 0.3), alpha=0.5,
+    ax.errorbar(dist[exc > 0], exc[exc > 0], lw=2.5, c=(1, 0.1, 0.3), alpha=0.5,
                 label='MD simulations', fmt='o', ms=5, mew=0.5, mec='k', zorder=10)
-    ax.plot(dist, exponential(dist, *popt), lw=2.5, c='k', ls='-',
+    pred_y = exponential(dist, *popt)
+    ax.plot(dist[pred_y > 0], pred_y[pred_y > 0], lw=2.5, c='k', ls='-',
             label='Exponential fit', zorder=1, alpha=1)
     mark_y = popt[2] * frac_c
     mark_x = exponential_solvex(mark_y, *popt)
     print("{:.1f}% --> ({:.2f}, {:.2f})".format(frac_c * 100, mark_x, mark_y))
-    ax.axvline(mark_x, c='k', lw=0.7)
+    # ax.axvline(mark_x, c='k', lw=0.7)
     ax.axhline(mark_y, c='k', lw=0.7)
     ax.legend(fontsize=Z - 2, handletextpad=0.4)
+    ax.set_yticks([0, 20, 40, np.round(popt[-1], 0)])
     if savefig:
         plt.savefig(prefix + "_expfit.png", format='png',
                     bbox_inches='tight', dpi=300, transparent=True)
@@ -279,7 +288,7 @@ def plot_pi_angles_dist(pistack, d_max=0.5, sk=1, savefig=False, prefix='test'):
     """
     keys = pistack.keys()
     subplots_kw = {'xlim': (0, 90), 'ylim': (0, 90)}
-    fig, axs = plt.subplots(figsize=(15, 4.5), ncols=3, nrows=1, subplot_kw=subplots_kw,
+    fig, axs = plt.subplots(figsize=(15, 2.6), ncols=3, nrows=1, subplot_kw=subplots_kw,
                             gridspec_kw={'hspace': 0, 'wspace': 0.15})
     for ax in axs:
         ax.set_xlabel("Tilt (deg)", fontsize=Z)
@@ -314,18 +323,18 @@ def plot_pi_angles_hist(pistack, d_max=0.5, sk=1, savefig=False, prefix='test'):
     d_max is the threshold distance between centroids for the contact to be considered as a pi-pi interaction
     sk is the stride for extracting the data (for when there are too many points to visualize)
     """
-    hmax = 200
+    hmax = 160
     keys = pistack.keys()
     cmap = cm.ocean_r
     subplots_kw = {'xlim': (0, 90), 'ylim': (0, 90)}
-    fig, axs = plt.subplots(figsize=(15, 4.5), ncols=3, nrows=1,
+    fig, axs = plt.subplots(figsize=(10, 2.6), ncols=3, nrows=1,
                             subplot_kw=subplots_kw, gridspec_kw={'hspace': 0.0, 'wspace': 0.15})
     for ax in axs:
-        ax.set_xlabel("Tilt (deg)", fontsize=Z)
+        ax.set_xlabel(r"$\theta_{tilt}$ (deg)", fontsize=Z)
         ax.tick_params(labelsize=Z)
         ax.set_xticks(np.linspace(0, 90, 4))
         ax.set_yticks(np.linspace(0, 90, 4))
-    axs[0].set_ylabel("Offset (deg)", fontsize=Z)
+    axs[0].set_ylabel(r"$\phi_{off}$ (deg)", fontsize=Z)
     for k, key in enumerate(keys):
         mask = pistack[key]['dist'] <= d_max
         data = {key_pi: val[mask] for key_pi, val in pistack[key].items()}
@@ -345,6 +354,8 @@ def plot_pi_angles_hist(pistack, d_max=0.5, sk=1, savefig=False, prefix='test'):
     if savefig:
         plt.savefig(prefix + "_anghist.png", format='png',
                     bbox_inches='tight', dpi=300, transparent=True)
+        plt.savefig(prefix + "_anghist.svg", format='svg',
+                    bbox_inches='tight')
     plt.show()
     plt.close()
 
@@ -514,11 +525,13 @@ def plot_cluster(toplot, btimes, colors, ignore_ns=0.5, xlim=(0, 20), ylim=(1, 2
     plt.close()
 
 
-def plot_cumevents(toplot, btimes, colors, ignore_ns=0.5, xlim=(0, 5), nticks=3, nbins=80, ylim=None, normed=False, savefig=False, prefix=""):
+def plot_cumevents(toplot, btimes, colors, ignore_fit=1000, ignore_ns=0.5,
+                   figsize=(5.2, 3.86), xlim=(0, 5), nticks=3, nbins=80, ylim=None, normed=False, savefig=False, prefix=""):
     """
     It makes a cumulative histogram from the column dt of the
     dataframes in btimes with keys in the list toplot.
     The plot ignores the events shorter than ignore_ns.
+    The fit ignores the bins with less than ignore_fit cumulated events
     colors is a dictionary with keys toplot containing the color for each scattered dataframe.
 
     If normed is True, then the cumulative counts are normalized so the maximum is curve is 1.
@@ -530,9 +543,11 @@ def plot_cumevents(toplot, btimes, colors, ignore_ns=0.5, xlim=(0, 5), nticks=3,
     xlim and ylim set the limits of the plots' axes.
     """
     ns = []
-    fig, ax = plt.subplots(figsize=(4.5, 3.5), nrows=1, ncols=1)
+    fig, ax = plt.subplots(figsize=figsize, nrows=1, ncols=1)
+    ax.plot([-10, -10], lw=2, c='k', ls='-', label='MD')
+    ax.plot([-10, -10], lw=2, c='k', ls='--', label='Fit')
     ax.tick_params(labelsize=Z)
-    ax.set_xlabel("Residence time (ns)", fontsize=Z)
+    ax.set_xlabel("Contact duration (ns)", fontsize=Z)
     ax.set_ylabel("Cumulated events", fontsize=Z)
     for key in toplot:
         data = btimes[key]
@@ -547,8 +562,15 @@ def plot_cumevents(toplot, btimes, colors, ignore_ns=0.5, xlim=(0, 5), nticks=3,
         if normed:
             cumcount = cumcount / np.max(cumcount)
         ax.errorbar(bins, cumcount, c=colors[key], label=key, lw=2.5)
+        fit_mask = cumcount < ignore_fit
+        fit_x = bins[fit_mask]
+        fit_y = cumcount[fit_mask]
+        popt, _ = curve_fit(exponential_zero, fit_x, fit_y, p0=(4000, 1))
+        print("{:.2f} e^-{:.2f}x".format(*popt))
+        print("R2: {:.3f}".format(r2_score(fit_y, exponential_zero(fit_x, *popt))))
+        ax.plot(fit_x, exponential_zero(fit_x, *popt), c=colors[key], ls='--')
         ns.append(len(data_masked))
-    ax.set_xlim(xlim)
+    ax.set_xlim(xlim[1], xlim[0])
     # ax.set_xlim(0.6)
     if ylim is not None:
         ax.set_ylim(ylim)
@@ -556,7 +578,7 @@ def plot_cumevents(toplot, btimes, colors, ignore_ns=0.5, xlim=(0, 5), nticks=3,
     else:
         ax.set_ylim(0, max(ns) * 1.05)
     ax.set_xticks(np.linspace(*xlim, nticks))
-    # ax.legend(fontsize=Z, loc='center', bbox_to_anchor=(1.2,0.5))
+    ax.legend(fontsize=Z, loc='best', framealpha=0.5)
     if savefig:
         plt.savefig(prefix + "_cumev.png", format='png', bbox_inches='tight', dpi=300, transparent=True)
         plt.savefig(prefix + "_cumev.svg", format='svg', bbox_inches='tight')
@@ -602,65 +624,43 @@ def plot_positions(keys, btimes, colors, ignore_ns=0.5, req_sample_size=100, nor
     naref_max = max(naref_list)
     natarget_max = max(natarget_list)
 
-    for key in keys:
-        data = btimes[key]
-        data_masked = data.loc[data['dt'] > ignore_ns]
-        data_grouped = data_masked.groupby(['aref', 'atarget'])
-        if normdistr:
-            speeds = data_grouped['dt'].sample(
-                min(n_samples_min, data_grouped['dt'].size().min()), random_state=RS).groupby(['aref', 'atarget']).mean()
-        else:
-            speeds = data_grouped['dt'].mean()
-        speeds_list.append(speeds.loc[data_grouped.size() > req_sample_size].max())
-    speeds_max = max(speeds_list)
-    # fig, all_axs = plt.subplots(figsize=(max(3*0.7*naref_max, 12), 1.3*len(keys)*0.7*natarget_max), nrows=len(keys), ncols=3,
-    # subplot_kw={'xlim':(-0.5,naref_max-0.5), 'ylim':(-0.5,natarget_max-0.5)},
-    # gridspec_kw={'hspace':0.2})
-    fig, all_axs = plt.subplots(figsize=(1.3 * len(keys) * 0.7 * natarget_max, max(3 * 0.7 * naref_max, 12)), nrows=len(keys), ncols=3,
-                                subplot_kw={'ylim': (-0.5, naref_max - 0.5),
-                                            'xlim': (-0.5, natarget_max - 0.5)},
-                                gridspec_kw={'hspace': 0.2})
-    all_axs[0, 0].set_title('Total number of events', fontsize=Z, pad=20)
-    all_axs[0, 1].set_title('Total binding time', fontsize=Z, pad=20)
-    for ax in all_axs[-1, :]:
+    fig, all_axs = plt.subplots(figsize=(5.6 * len(keys), 4.3), ncols=len(keys), nrows=1,
+                                subplot_kw={'ylim': (0., naref_max + 1.0),
+                                            'xlim': (0.5, natarget_max + 0.5)},
+                                gridspec_kw={'hspace': 0.25})
+    # all_axs[0].set_title('Total number of events', fontsize=Z, pad=20)
+    # all_axs[0, 1].set_title('Total binding time', fontsize=Z, pad=20)
+    for ax in all_axs:
         # ax.set_xlabel("Ligand position", fontsize=Z)
         ax.set_xlabel("Analyte position", fontsize=Z)
-    for key, axs, naref, natarget in zip(keys, all_axs, naref_list, natarget_list):
+    for key, ax, naref, natarget in zip(keys, all_axs, naref_list, natarget_list):
         # axs[0].set_ylabel("{} position".format(key), fontsize=Z)
-        axs[0].set_ylabel("Ligand position", fontsize=Z)
-        for ax in axs:
-            ax.tick_params(labelsize=Z)
+        ax.set_ylabel("Ligand position", fontsize=Z)
+        # for ax in axs:
+        ax.tick_params(labelsize=Z)
         data = btimes[key]
         data_masked = data.loc[data['dt'] > ignore_ns]
         data_grouped = data_masked.groupby(['aref', 'atarget'])
         sizes = data_grouped['dt'].size()
         times = data_grouped['dt'].sum()
-        if normdistr:
-            speeds = data_grouped['dt'].sample(min(n_samples_min, sizes.min()), random_state=RS).groupby([
-                'aref', 'atarget']).mean()
-            all_axs[0, 2].set_title("Average binding time\n[{}]".format(
-                n_samples_min), fontsize=Z, pad=20)
-        else:
-            speeds = data_grouped['dt'].mean()
-            all_axs[0, 2].set_title("Average binding time", fontsize=Z, pad=20)
-        for (n, szs), (m, tms), (o, sps) in zip(sizes.iteritems(), times.iteritems(), speeds.iteritems()):
-            # axs[0].errorbar(*n, fmt='o', ms=50*szs/sizes_max, c=colors[key], mec='k', mew=2)
-            # axs[1].errorbar(*n, fmt='o', ms=50*tms/times_max, c=colors[key], mec='k', mew=2)
-            axs[0].errorbar(n[1], n[0], fmt='o', ms=50 * szs / sizes_max, c=colors[key], mec='k', mew=2)
-            axs[1].errorbar(n[1], n[0], fmt='o', ms=50 * tms / times_max, c=colors[key], mec='k', mew=2)
-            if szs > req_sample_size:
-                # axs[2].errorbar(*n, fmt='o', ms=50*sps/speeds_max, c=colors[key], mec='k', mew=2)
-                axs[2].errorbar(n[1], n[0], fmt='o', ms=50 * sps / speeds_max,
-                                c=colors[key], mec='k', mew=2)
-            else:
-                # axs[2].errorbar(*n, fmt='x', ms=8, c='gray', mec='k', mew=2)
-                axs[2].errorbar(n[1], n[0], fmt='x', ms=8, c='gray', mec='k', mew=2)
+
+        for (n, szs), (m, tms) in zip(sizes.iteritems(), times.iteritems()):
+            rel = szs / sizes_max
+            # col = (1, 1, 1, 0)
+            col = (*colors[key], 0.15)
+            col_edge = (*colors[key], 0.9)
+            ax.errorbar(n[1] + 1, n[0] + 1, fmt='o', ms=50 * rel,
+                        c=col, mec=col_edge, mew=2)
+            if rel > 0.5:
+                ax.text(n[1] + 1, n[0] + 1, "{:.1f}".format(rel).strip("0"),
+                        fontsize=Z - 2, horizontalalignment='center', verticalalignment='center')
+            # axs[1].errorbar(n[1], n[0], fmt='o', ms=50 * tms / times_max, c=colors[key], mec='k', mew=2)
+
     if savefig:
         plt.savefig(prefix + "_positions.png", format='png',
                     bbox_inches='tight', dpi=300, transparent=True)
         plt.savefig(prefix + "_positions.svg", format='svg',
                     bbox_inches='tight', dpi=300, transparent=False)
-        svg2emf(prefix + "_positions.svg")
     plt.show()
     plt.close()
 
