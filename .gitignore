@@ -1,0 +1,5 @@
+/AuPt/AuPt_env*
+**/.ipynb_checkpoints
+**.pytest_cache
+**.vscode
+**.DS_Store
