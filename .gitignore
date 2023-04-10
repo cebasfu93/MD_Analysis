@@ -1,5 +1,8 @@
 /AuPt/AuPt_env*
 **/.ipynb_checkpoints
 **.pytest_cache
+**__pycache__
 **.vscode
 **.DS_Store
+**.egg-info
+**.xtc_offsets*
