@@ -16,9 +16,11 @@ class RadialDistributionFunctionsOutput(BaseOutput):
 
 
 @ dataclass
-class BindingTimeOutput(BaseOutput):
+class BindingTimesOutput(BaseOutput):
     """
     Class with the outputs of a Binding Times calculation.
     """
-    residue_numbers: IntArray
     binding_times: FloatArray
+    start_times: FloatArray
+    stop_times: FloatArray
+    target_residue_numbers: IntArray

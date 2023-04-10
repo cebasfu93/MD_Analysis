@@ -1,4 +1,4 @@
-"""Module to compute radial distribution functions"""
+"""Module to compute radial distribution functions."""
 import numpy as np
 from MDAnalysis import Universe
 from scipy.integrate import cumtrapz
@@ -6,11 +6,12 @@ from tqdm import tqdm
 
 from aupt.ensemble.inputs import RadialDistributionFunctionsInput
 from aupt.ensemble.outputs import RadialDistributionFunctionsOutput
+from aupt.utils import get_number_of_frames_to_read
 
 
 def rdf(
-        universe: Universe,
-        input_control: RadialDistributionFunctionsInput,
+    universe: Universe,
+    input_control: RadialDistributionFunctionsInput,
 ) -> RadialDistributionFunctionsOutput:
     """
     Calculates radial distribution function with respect to the center of mass of a reference group.
@@ -31,8 +32,10 @@ def rdf(
     # TODO: Use the COM of each molecule in each target, the COM of each target groups, or the atoms
     # Right now it supports only the latter
     delta_t = universe.trajectory[0].dt
-    n_read = int(input_control.stop_time -
-                 input_control.start_time) / delta_t + 1
+    n_read = get_number_of_frames_to_read(
+        start_time=input_control.start_time,
+        stop_time=input_control.stop_time,
+        delta_t=delta_t)
     rdfs = {}
     rdfs_cum = {}
     r_space = np.linspace(

@@ -48,29 +48,29 @@ class RadialDistributionFunctionsInput(BaseInput):
             self.atom_groups[name] for name in self.target_groups_name]
 
 
-class BindingTimeInput(BaseInput):
+class BindingTimesInput(BaseInput):
     """
     Class with inputs to compute radial distributions functions.
     """
 
     def __init__(
             self,
-            group1_name: str,
-            group1_com: bool,
-            group2_name: str,
-            group2_com: bool,
+            ref_group_name: str,
+            ref_group_com: bool,
+            target_group_name: str,
+            target_group_rescom: bool,
             distance_threshold: float,
             **kwargs) -> None:
 
         super().__init__(**kwargs)
 
-        group_names = [group1_name, group2_name]
+        group_names = [ref_group_name, target_group_name]
         self.validate_atom_groups(group_names=group_names)
 
-        self.group1_name: str = group1_name
-        self.group1_com: bool = group1_com
-        self.group1: AtomGroup = self.atom_groups[self.group1_name]
-        self.group2_name: str = group2_name
-        self.group2_com: bool = group2_com
-        self.group2: AtomGroup = self.atom_groups[self.group2_name]
+        self.ref_group_name: str = ref_group_name
+        self.ref_group_com: bool = ref_group_com
+        self.ref_group: AtomGroup = self.atom_groups[self.ref_group_name]
+        self.target_group_name: str = target_group_name
+        self.target_group_rescom: bool = target_group_rescom
+        self.target_group: AtomGroup = self.atom_groups[self.target_group_name]
         self.distance_threshold: float = distance_threshold

@@ -46,8 +46,6 @@ class BaseInput:
                 If some atom group is not present in the atom groups dictionary.
         """
         try:
-            print(group_names)
-            print(self.atom_groups)
             _ = [self.atom_groups[group_name] for group_name in group_names]
             return None
         except KeyError as key_error:
