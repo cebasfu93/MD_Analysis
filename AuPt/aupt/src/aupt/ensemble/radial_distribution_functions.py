@@ -30,8 +30,6 @@ def rdf(
     """
     # TODO: Use the COM of each molecule in each target, the COM of each target groups, or the atoms
     # Right now it supports only the latter
-    output = RadialDistributionFunctionsOutput()
-
     delta_t = universe.trajectory[0].dt
     n_read = int(input_control.stop_time -
                  input_control.start_time) / delta_t + 1
@@ -42,7 +40,6 @@ def rdf(
         input_control.r_range[1],
         input_control.nbins)
     r_center = 0.5 * (r_space[1:] + r_space[:-1])
-    output.add_space(space=r_center)
     print(f"Reference COM: {input_control.ref_group_name}")
     for target_group_name, target_group in \
             zip(input_control.target_groups_name, input_control.target_groups):
@@ -74,5 +71,6 @@ def rdf(
         # returns a shape with one element less
         cumulative = homo_dens * cumtrapz(y=integrand, x=r_center, initial=0.0)
         rdfs_cum[target_group_name] = cumulative
-    output.add_rdfs(rdfs=rdfs, cumulative_rdfs=rdfs_cum)
-    return output
+    return RadialDistributionFunctionsOutput(space=r_space,
+                                             rdfs=rdfs,
+                                             cumulative_rdfs=rdfs_cum)

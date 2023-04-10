@@ -49,6 +49,9 @@ class RadialDistributionFunctionsInput(BaseInput):
 
 
 class BindingTimeInput(BaseInput):
+    """
+    Class with inputs to compute radial distributions functions.
+    """
 
     def __init__(
             self,
@@ -58,6 +61,7 @@ class BindingTimeInput(BaseInput):
             group2_com: bool,
             distance_threshold: float,
             **kwargs) -> None:
+
         super().__init__(**kwargs)
 
         group_names = [group1_name, group2_name]
