@@ -69,6 +69,8 @@ class BindingTimeInput(BaseInput):
 
         self.group1_name: str = group1_name
         self.group1_com: bool = group1_com
+        self.group1: AtomGroup = self.atom_groups[self.group1_name]
         self.group2_name: str = group2_name
         self.group2_com: bool = group2_com
+        self.group2: AtomGroup = self.atom_groups[self.group2_name]
         self.distance_threshold: float = distance_threshold

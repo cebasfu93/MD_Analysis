@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from typing import Dict
 from aupt.base_io import BaseOutput
-from aupt.types import FloatArray
+from aupt.types import FloatArray, IntArray
 
 
 @dataclass
@@ -13,3 +13,12 @@ class RadialDistributionFunctionsOutput(BaseOutput):
     space: FloatArray
     rdfs: Dict[str, FloatArray]
     cumulative_rdfs: Dict[str, FloatArray]
+
+
+@ dataclass
+class BindingTimeOutput(BaseOutput):
+    """
+    Class with the outputs of a Binding Times calculation.
+    """
+    residue_numbers: IntArray
+    binding_times: FloatArray
