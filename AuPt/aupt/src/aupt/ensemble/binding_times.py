@@ -63,13 +63,10 @@ def binding_time(
             x_targets = [res.positions for res in target_group_split]\
                 if input_control.target_group_rescom is False\
                 else [res.center_of_mass() for res in target_group_split]
-            if input_control.target_group_rescom is False:
-                # TODO: implement the all-atoms-considered case.
-                raise RuntimeError(
-                    "target_group_rescom=False is not yet implemented.")
-            dists = cdist(x_ref, x_targets)
-            target_in_contact = np.any(
-                dists < input_control.distance_threshold, axis=0)
+            dists = [cdist(x_ref, x_target) for x_target in x_targets]
+            target_in_contact = [
+                np.any(dist < input_control.distance_threshold) for dist in dists
+            ]
             bound_grid[target_in_contact, j] = 1  # there is contact
     transitions = bound_grid[:, 1:] - bound_grid[:, :-1]
     on_transitions = np.where(transitions == 1)

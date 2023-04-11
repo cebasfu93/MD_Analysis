@@ -40,31 +40,45 @@ def number_of_contacts(
         delta_t=delta_t
     )
 
+    n_target_groups = len(input_control.target_groups_name)
     time_points = np.zeros(n_read)
-    n_contacts = np.zeros_like(time_points, dtype='int')
-    n_residue_contacts = np.zeros_like(time_points, dtype='int')
+    n_contacts = np.zeros((n_target_groups, n_read), dtype='int')
+    n_residue_contacts = np.zeros(
+        (n_target_groups, n_read),
+        dtype='int'
+    )
 
-    target_group_residues: List[AtomGroup] = input_control.target_group.split(
-        'residue')
+    print(f"Reference group: {input_control.ref_group_name}")
+    for i, (target_group, target_group_name) in \
+            enumerate(zip(input_control.target_groups, input_control.target_groups_name)):
+        print(f"Current target: {target_group_name}")
+        target_group_residues: List[AtomGroup] = target_group.split('residue')
 
-    for i, frame in tqdm(enumerate(universe.trajectory), total=n_read):
-        if frame.time > input_control.stop_time:
-            break
-        if frame.time >= input_control.start_time:
-            time_points[i] = frame.time
-            x_ref = input_control.ref_group.positions
-            x_targets = [r.positions for r in target_group_residues]
-            dists = [cdist(x_ref, x_target) for x_target in x_targets]
-            contacts_masks = [
-                dist_matrix <= input_control.distance_threshold for dist_matrix in dists]
+        for j, frame in tqdm(enumerate(universe.trajectory), total=n_read):
+            if frame.time > input_control.stop_time:
+                break
+            if frame.time >= input_control.start_time:
+                time_points[i] = frame.time
+                x_ref = input_control.ref_group.positions
+                x_targets = [r.positions for r in target_group_residues]
+                dists = [cdist(x_ref, x_target) for x_target in x_targets]
+                contacts_masks = [
+                    dist_matrix <= input_control.distance_threshold for dist_matrix in dists]
 
-            n_contacts_now = sum(np.sum(mask) for mask in contacts_masks)
-            n_contacts[i] = n_contacts_now
+                n_contacts_now = sum(np.sum(mask) for mask in contacts_masks)
+                n_contacts[i, j] = n_contacts_now
 
-            n_residue_contacts_now = sum(np.any(mask)
-                                         for mask in contacts_masks)
-            n_residue_contacts[i] = n_residue_contacts_now
+                n_residue_contacts_now = sum(np.any(mask)
+                                             for mask in contacts_masks)
+                n_residue_contacts[i, j] = n_residue_contacts_now
+
+    n_contacts_wrapped = dict(
+        zip(input_control.target_groups_name, n_contacts)
+    )
+    n_residue_contacts_wrapped = dict(
+        zip(input_control.target_groups_name, n_residue_contacts)
+    )
 
     return ContactsNumberOutput(time_points=time_points,
-                                number_of_contacts=n_contacts,
-                                number_of_contact_residues=n_residue_contacts)
+                                number_of_contacts=n_contacts_wrapped,
+                                number_of_contact_residues=n_residue_contacts_wrapped)

@@ -3,6 +3,7 @@ from typing import Any, Dict
 
 import numpy as np
 from MDAnalysis import AtomGroup, Universe
+from MDAnalysis.core.groups import Atom
 from scipy.spatial.distance import cdist
 
 
@@ -62,7 +63,8 @@ def get_surface_atoms(
     universe: Universe,
     np_atom_group: AtomGroup,
     bond_distance: float,
-    ref_frame: int = 0
+    ref_frame: int = 0,
+    get_bulk_atoms: bool = False
 ) -> AtomGroup:
     """
     Extracts the atoms from a nanoparticle that don't have the maximal number of neighbors.
@@ -76,6 +78,8 @@ def get_surface_atoms(
             Threshold distance (in A) under which an atom is considered a neighbor.
         ref_frame (int, optional): 
             Frame at which to check for neighbors.
+        get_bulk_atoms (bool, optional):
+            Whether to return the bulk atoms or the surface atoms.
 
     Returns:
         AtomGroup: 
@@ -87,4 +91,73 @@ def get_surface_atoms(
     n_neighbors = np.sum(dists < bond_distance, axis=0) - 1
     n_max_neighbors = np.max(n_neighbors)
     print(f"Bulk atoms have {n_max_neighbors} neighbors")
+    if get_bulk_atoms is False:
+        return np_atom_group[n_neighbors == n_max_neighbors]
     return np_atom_group[n_neighbors < n_max_neighbors]
+
+
+def get_n_neighbors(
+    atom_group: AtomGroup,
+    atom: Atom,
+    distance_threshold: float
+) -> int:
+    """
+    Determines the number of neighbors (i.e., atoms under a distance threshold) 
+    of a group of atoms with respect to a reference atom.
+
+    Args:
+        atom_group (AtomGroup): 
+            Atom group were to look for the neighbors. 
+            The atom 'atom' can be included in the group.
+        atom (Atom): 
+            Atom for which to compute the number of neighbors.
+        distance_threshold (float): 
+            Maximum distance for a pair of atoms to be considered neighbors.
+
+    Returns:
+        int: 
+            Number of neighbors that an atom has.
+    """
+    atom_group_without_atom = atom_group.subtract(atom)
+    dists = cdist(atom_group_without_atom.positions,
+                  atom.position[np.newaxis, ...])
+    return np.sum(dists <= distance_threshold)
+
+
+def get_atoms_with_n_neighbors(
+    atom_group: AtomGroup,
+    distance_threshold: float,
+    n_neighbors: int
+) -> AtomGroup:
+    """
+    Gets the subgroup of atoms with a certain number of neighbors.
+
+    Args:
+        atom_group (AtomGroup): 
+            Atom group to subsample.
+        distance_threshold (float): 
+            Maximum distance for an atom-atom pair to be neighbors.
+        n_neighbors (int): 
+            Number of nighbors in each atom of the final atom group.
+
+    Returns:
+        AtomGroup: 
+            Atom group with atoms that each hace n_neighbors neighbors.
+    """
+    atom_group_neighbors = np.array([get_n_neighbors(
+        atom_group=atom_group, atom=atom, distance_threshold=distance_threshold)
+        for atom in atom_group])
+    return atom_group[atom_group_neighbors == n_neighbors]
+
+
+def print_atom_group_as_vmd_prompt(atom_group: AtomGroup) -> None:
+    """
+    Prints a VMD selection with the index of all atoms in a group.
+
+    Args:
+        atom_group (AtomGroup): 
+            Atom group to select in VMD.
+    """
+    prompt = "index "
+    prompt += " ".join([str(atom.id) for atom in atom_group])
+    print(prompt, end='\n\n')
