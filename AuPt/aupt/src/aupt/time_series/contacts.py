@@ -58,7 +58,7 @@ def number_of_contacts(
             if frame.time > input_control.stop_time:
                 break
             if frame.time >= input_control.start_time:
-                time_points[i] = frame.time
+                time_points[j] = frame.time
                 x_ref = input_control.ref_group.positions
                 x_targets = [r.positions for r in target_group_residues]
                 dists = [cdist(x_ref, x_target) for x_target in x_targets]

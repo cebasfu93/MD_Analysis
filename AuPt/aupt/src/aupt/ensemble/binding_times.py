@@ -40,7 +40,8 @@ def binding_time(
         start_time=input_control.start_time,
         stop_time=input_control.stop_time,
         delta_t=delta_t)
-
+    print(f"Reference group: {input_control.ref_group_name}")
+    print(f"Target group name: {input_control.target_group_name}")
     target_group_split: List[AtomGroup] = input_control.target_group.split(
         'residue')
     target_residue_numbers_split: List[int] = [

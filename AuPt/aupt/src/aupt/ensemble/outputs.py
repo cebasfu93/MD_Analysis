@@ -25,7 +25,7 @@ class RadialDistributionFunctionsOutput(BaseOutput):
             str: 
                 Output of the analysis as a tabular string.
         """
-        n_fields = fields(self)
+        n_fields = len(fields(self))
         labels = self.rdfs.keys()
         assert labels == self.cumulative_rdfs.keys()  # security check
 
@@ -35,7 +35,7 @@ class RadialDistributionFunctionsOutput(BaseOutput):
         n_data_cols = (n_fields - 1) * len(labels)  # -1 to ignore space
         written_output = f"{'space (A)':<10} "
         for label in labels:
-            written_output += 2 * f"{label:<10} "
+            written_output += f"{label + ' (AA)':<10} {label + ' (res)':<10} "
         written_output += "\n"
         for space_point, data in zip(self.space, unzipped_data):
             written_output += f"{space_point:<10.2f} " + \
@@ -66,12 +66,12 @@ class BindingTimesOutput(BaseOutput):
         n_fields = len(fields(self))
         written_output = ""
         for field in fields(self):
-            written_output += f"{field.name:<25} "
+            written_output += f"{field.name:<20} "
         written_output += "\n"
 
         zipped_data = np.vstack([getattr(self, field.name)
                                 for field in fields(self)]).T
 
         for row in zipped_data:
-            written_output += ("{:<25} " * n_fields).format(*row) + "\n"
+            written_output += ("{:<20} " * n_fields).format(*row) + "\n"
         return written_output

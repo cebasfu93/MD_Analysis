@@ -66,7 +66,10 @@ class BaseInput:
         for key, value in self.__dict__.items():
             if key == "atom_groups":
                 continue
-            written_input += f"# {key:<25} {str(value):<1000}\n"
+            if isinstance(value, AtomGroup):
+                written_input += f"# {key:<25} <AtomGroup with {len(value)} atoms>\n"
+                continue
+            written_input += f"# {key:<25} {str(value):<100}\n"
         return written_input
 
 

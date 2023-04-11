@@ -33,9 +33,9 @@ class ContactsNumberOutput(BaseOutput):
         n_data_cols = 2 * len(labels)
         written_output = f"{'time (ps)':<10} "
         for label in labels:
-            written_output += 2 * f"{label:<10} "
+            written_output += f"{label + ' (AA)':<15} {label + ' (res)':<15} "
         written_output += "\n"
         for time_point, data in zip(self.time_points, unzipped_data):
             written_output += f"{time_point:<10.2f} " + \
-                ("{:<10} " * n_data_cols).format(*data) + "\n"
+                ("{:<15} " * n_data_cols).format(*data) + "\n"
         return written_output
