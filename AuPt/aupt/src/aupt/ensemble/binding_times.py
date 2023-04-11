@@ -35,7 +35,7 @@ def binding_time(
             RuntimeError:
                 If target_group_rescom is True
     """
-    delta_t = universe.trajectory[0].dt
+    delta_t = universe.trajectory.dt
     n_read = get_number_of_frames_to_read(
         start_time=input_control.start_time,
         stop_time=input_control.stop_time,
@@ -64,8 +64,9 @@ def binding_time(
                 if input_control.target_group_rescom is False\
                 else [res.center_of_mass() for res in target_group_split]
             if input_control.target_group_rescom is False:
+                # TODO: implement the all-atoms-considered case.
                 raise RuntimeError(
-                    "target_group_rescom=True is not yet implemented.")
+                    "target_group_rescom=False is not yet implemented.")
             dists = cdist(x_ref, x_targets)
             target_in_contact = np.any(
                 dists < input_control.distance_threshold, axis=0)

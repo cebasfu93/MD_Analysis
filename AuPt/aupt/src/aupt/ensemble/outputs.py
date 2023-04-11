@@ -15,7 +15,7 @@ class RadialDistributionFunctionsOutput(BaseOutput):
     cumulative_rdfs: Dict[str, FloatArray]
 
 
-@ dataclass
+@dataclass
 class BindingTimesOutput(BaseOutput):
     """
     Class with the outputs of a Binding Times calculation.

@@ -31,7 +31,7 @@ def rdf(
     """
     # TODO: Use the COM of each molecule in each target, the COM of each target groups, or the atoms
     # Right now it supports only the latter
-    delta_t = universe.trajectory[0].dt
+    delta_t = universe.trajectory.dt
     n_read = get_number_of_frames_to_read(
         start_time=input_control.start_time,
         stop_time=input_control.stop_time,
