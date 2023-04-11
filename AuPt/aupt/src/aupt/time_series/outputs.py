@@ -12,3 +12,4 @@ class ContactsNumberOutput(BaseOutput):
     """
     time_points: FloatArray
     number_of_contacts: IntArray
+    number_of_contact_residues: IntArray
