@@ -81,7 +81,6 @@ class BindingTimesInput(BaseInput):
                 Maximum distance (in A) at which two atoms (or COMs) 
                 are considered to be in contact.
         """
-
         super().__init__(**kwargs)
 
         group_names = [ref_group_name, target_group_name]

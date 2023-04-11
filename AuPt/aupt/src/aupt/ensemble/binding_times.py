@@ -80,8 +80,8 @@ def binding_time(
     start_frames = frames_array[[on_ndx for on_ndx in on_transitions[1]]]
     stop_frames = frames_array[[off_ndx - 1 for off_ndx in off_transitions[1]]]
     binding_times = stop_times - start_times
-    target_residue_numbers = [target_residue_numbers_split[r]
-                              for r in on_transitions[0]]
+    target_residue_numbers = np.array([target_residue_numbers_split[r]
+                                       for r in on_transitions[0]]).astype('int')
 
     return BindingTimesOutput(binding_times=binding_times,
                               start_times=start_times,

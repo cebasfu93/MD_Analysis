@@ -1,5 +1,6 @@
 """Base class for managing input parameters of analysis metrics and their outputs"""
-from typing import Dict, List, Optional
+from pathlib import Path
+from typing import Dict, List, Optional, Union
 
 from MDAnalysis import AtomGroup
 
@@ -53,6 +54,21 @@ class BaseInput:
                   "Are you sure you passed an atom_groups dictionary?")
             raise key_error
 
+    def __str__(self) -> str:
+        """
+        Writes the class as a tabular string message.
+
+        Returns:
+            str: 
+                Input parameters as a class.
+        """
+        written_input = ""
+        for key, value in self.__dict__.items():
+            if key == "atom_groups":
+                continue
+            written_input += f"# {key:<25} {str(value):<1000}\n"
+        return written_input
+
 
 class BaseOutput():
     """
@@ -64,3 +80,32 @@ class BaseOutput():
         Initializer
         """
         return
+
+
+class BaseWriter():
+    """
+    Base class for writing the inputs and outputs of an analysis run.
+    """
+
+    def __init__(
+        self,
+        analysis_input: BaseInput,
+        analysis_output: BaseOutput,
+    ) -> None:
+        """
+        Initializer.
+        """
+        self.analysis_input = analysis_input
+        self.analysis_output = analysis_output
+
+    def write(self, filename: Union[Path, str]) -> None:
+        """
+        Writes the input and output data to a file.
+
+        Args:
+            filename (Union[Path, str]): 
+                File where to save the data.
+        """
+        with open(filename, "w", encoding="utf-8") as file:
+            file.write(str(self.analysis_input))
+            file.write(str(self.analysis_output))
