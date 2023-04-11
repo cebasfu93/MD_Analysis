@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 from aupt.ensemble.inputs import BindingTimesInput
 from aupt.ensemble.outputs import BindingTimesOutput
+
 from aupt.utils import get_number_of_frames_to_read
 
 
@@ -47,14 +48,15 @@ def binding_time(
 
     n_targets = len(target_group_split)
     time_points = np.zeros(n_read)
+    frames_array = np.zeros(n_read, dtype='int')
     # start and end with all contacts off
-    print(n_read)
     bound_grid = np.zeros((n_targets, n_read + 2), dtype='int')
     for j, frame in tqdm(enumerate(universe.trajectory, 1), total=n_read):
         if frame.time > input_control.stop_time:
             break
         if frame.time >= input_control.start_time:
             time_points[j-1] = frame.time
+            frames_array[j-1] = frame.frame
             x_ref = input_control.ref_group.positions\
                 if input_control.ref_group_com is False\
                 else input_control.ref_group.center_of_mass()[..., np.newaxis]
@@ -73,12 +75,12 @@ def binding_time(
     off_transitions = np.where(transitions == -1)
 
     binding_times = np.zeros(len(on_transitions[0]))
-    start_times = np.zeros_like(binding_times)
-    stop_times = np.zeros_like(binding_times)
     target_residue_numbers = np.zeros_like(binding_times)
 
     start_times = time_points[[on_ndx for on_ndx in on_transitions[1]]]
     stop_times = time_points[[off_ndx - 1 for off_ndx in off_transitions[1]]]
+    start_frames = frames_array[[on_ndx for on_ndx in on_transitions[1]]]
+    stop_frames = frames_array[[off_ndx - 1 for off_ndx in off_transitions[1]]]
     binding_times = stop_times - start_times
     target_residue_numbers = [target_residue_numbers_split[r]
                               for r in on_transitions[0]]
@@ -86,4 +88,6 @@ def binding_time(
     return BindingTimesOutput(binding_times=binding_times,
                               start_times=start_times,
                               stop_times=stop_times,
+                              start_frames=start_frames,
+                              stop_frames=stop_frames,
                               target_residue_numbers=target_residue_numbers)

@@ -23,4 +23,6 @@ class BindingTimesOutput(BaseOutput):
     binding_times: FloatArray
     start_times: FloatArray
     stop_times: FloatArray
+    start_frames: IntArray
+    stop_frames: IntArray
     target_residue_numbers: IntArray
