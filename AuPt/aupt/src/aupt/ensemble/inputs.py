@@ -61,6 +61,26 @@ class BindingTimesInput(BaseInput):
             target_group_rescom: bool,
             distance_threshold: float,
             **kwargs) -> None:
+        """
+        Initializer.
+
+        Args:
+            ref_group_name (str):
+                Label of the reference group. 
+            ref_group_com (bool): 
+                Whether a contact is defined by 
+                the distance to the COM of the reference group (True) 
+                or any atom in the reference group (False).
+            target_group_name (str): 
+                Label of the target group.
+            target_group_rescom (bool): 
+                Whether a contact is defined by 
+                the distance to the COM of a residue in the reference group (True) 
+                or any atom in a given residue of the target group (False).
+            distance_threshold (float): 
+                Maximum distance (in A) at which two atoms (or COMs) 
+                are considered to be in contact.
+        """
 
         super().__init__(**kwargs)
 
