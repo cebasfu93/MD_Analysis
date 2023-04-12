@@ -1,4 +1,5 @@
 """Base class for managing input parameters of analysis metrics and their outputs"""
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
@@ -115,7 +116,10 @@ class BaseWriter():
             universe
         """
         with open(filename, "w", encoding="utf-8") as file:
+            file.write(f"# TIME: {datetime.now()}\n")
             file.write(f"# TPR: {universe.filename}\n")
-            file.write(f"# XTC: {universe.trajectory.filename}\n")
+            file.write(f"# XTC: {universe.trajectory.filename}\n\n")
+            file.write("# INPUT:\n")
             file.write(str(self.analysis_input))
+            file.write("\n# OUTPUT:\n")
             file.write(str(self.analysis_output))
