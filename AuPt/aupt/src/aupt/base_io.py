@@ -113,7 +113,8 @@ class BaseWriter():
         Args:
             filename (Union[Path, str]): 
                 File where to save the data.
-            universe
+            universe (Universe):
+                Universe object with the MD metadata.
         """
         with open(filename, "w", encoding="utf-8") as file:
             file.write(f"# TIME: {datetime.now()}\n")
