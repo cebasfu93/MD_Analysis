@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
-from MDAnalysis import AtomGroup
+from MDAnalysis import AtomGroup, Universe
 
 
 class BaseInput:
@@ -101,14 +101,21 @@ class BaseWriter():
         self.analysis_input = analysis_input
         self.analysis_output = analysis_output
 
-    def write(self, filename: Union[Path, str]) -> None:
+    def write(
+        self,
+        filename: Union[Path, str],
+        universe: Universe
+    ) -> None:
         """
         Writes the input and output data to a file.
 
         Args:
             filename (Union[Path, str]): 
                 File where to save the data.
+            universe
         """
         with open(filename, "w", encoding="utf-8") as file:
+            file.write(f"# TPR: {universe.filename}\n")
+            file.write(f"# XTC: {universe.trajectory.filename}\n")
             file.write(str(self.analysis_input))
             file.write(str(self.analysis_output))
