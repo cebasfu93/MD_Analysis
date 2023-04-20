@@ -16,6 +16,7 @@ class RadialDistributionFunctionsInput(BaseInput):
         r_range: Tuple[float, float],
         nbins: int,
         ref_group_name: str,
+        ref_group_surf: bool,
         target_groups_name: List[str],
         **kwargs
     ) -> None:
@@ -30,6 +31,8 @@ class RadialDistributionFunctionsInput(BaseInput):
                 The number of points in the result is nbins - 1
             ref_group_name (str): 
                 Label of the atom group to use as reference.
+            ref_group_surf (bool):
+                Whether to compute the RDF with respect to the closest atom to the reference group.
             target_groups_name (List[str]): 
                 Labels of the atom groups to use as target.
         """
@@ -41,6 +44,7 @@ class RadialDistributionFunctionsInput(BaseInput):
         self.r_range: Tuple[float, float] = r_range
         self.nbins: int = nbins
         self.ref_group_name: str = ref_group_name
+        self.ref_group_surf: bool = ref_group_surf
         self.target_groups_name: List[str] = target_groups_name
 
         self.ref_group: AtomGroup = self.atom_groups[ref_group_name]

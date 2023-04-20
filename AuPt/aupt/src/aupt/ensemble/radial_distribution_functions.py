@@ -2,6 +2,7 @@
 import numpy as np
 from MDAnalysis import Universe
 from scipy.integrate import cumtrapz
+from scipy.spatial.distance import cdist
 from tqdm import tqdm
 
 from aupt.ensemble.inputs import RadialDistributionFunctionsInput
@@ -54,11 +55,16 @@ def rdf(
                 break
             if frame.time >= input_control.start_time:
                 n_frames += 1
-                x_ref = input_control.ref_group.center_of_mass()
                 x_target = target_group.positions
-                delta_x = np.subtract(x_target, x_ref)
-                dists = np.linalg.norm(delta_x, axis=1)
-                dists = dists[dists <= input_control.r_range[1]]
+                if input_control.ref_group_surf is False:
+                    x_ref = input_control.ref_group.center_of_mass()
+                    delta_x = np.subtract(x_target, x_ref)
+                    dists = np.linalg.norm(delta_x, axis=1)
+                    dists = dists[dists <= input_control.r_range[1]]
+                else:
+                    x_ref = input_control.ref_group.positions
+                    dists = cdist(x_ref, x_target)
+                    dists = np.min(dists, axis=0)
                 counts += np.histogram(dists, bins=r_space)[0]
         # Average particles counted in target group
         n_target = np.sum(counts) / n_frames
@@ -66,7 +72,8 @@ def rdf(
         homo_dens = 3 * n_target / (4 * np.pi * r_space[-1] ** 3)
         counts /= n_frames  # Averages number of target particles at each bin over time
         # Divide on the number of reference particles (1 center of mass)
-        counts /= 1
+        counts /= 1 if input_control.ref_group_surf is False \
+            else len(input_control.ref_group)
         counts /= v_shells  # Divide on shell volume
         counts /= homo_dens  # Divide on homogeneous density
         rdfs[target_group_name] = counts
