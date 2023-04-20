@@ -39,3 +39,25 @@ class ContactsNumberOutput(BaseOutput):
             written_output += f"{time_point:<10.2f} " + \
                 ("{:<15} " * n_data_cols).format(*data) + "\n"
         return written_output
+
+
+@dataclass
+class HydrogenBondsOutput(BaseOutput):
+    """
+    Class with the outputs of a Hydrogen Bonds calculation.
+    """
+    time_points: FloatArray
+    number_hbonds: IntArray
+
+    def __str__(self) -> str:
+        """
+        Writes the dataclass into a tabular string.
+
+        Returns:
+            str: 
+                Output of the analysis as a tabular string.
+        """
+        written_output = f"{'time (ps)':<15} number\n"
+        for time_point, n_hbonds in zip(self.time_points, self.number_hbonds):
+            written_output += f"{time_point:<15.2f} {n_hbonds:<15}\n"
+        return written_output

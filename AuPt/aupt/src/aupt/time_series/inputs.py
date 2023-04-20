@@ -45,3 +45,49 @@ class ContactsNumberInput(BaseInput):
         self.target_groups: List[AtomGroup] = [
             self.atom_groups[name] for name in self.target_groups_name
         ]
+
+
+class HydrogenBondsInput(BaseInput):
+    """
+    Class with inputs to compute number of hydrogen bonds over time.
+    """
+
+    def __init__(
+        self,
+        donors_sel: str,
+        hydrogens_sel: str,
+        acceptors_sel: str,
+        d_a_cutoff: float,
+        d_h_cutoff: float,
+        d_h_a_angle_cutoff: float,
+        update_selections: bool,
+        **kwargs
+    ) -> None:
+        """
+        Initializer.
+
+        Args:
+            donors_sel (str): 
+                Selection text for the H-bond donors.
+            hydrogens_sel (str):
+                Selection text for the hydrogen atoms involved in H-bonds.
+            acceptors_sel (str): 
+                Selection text for the H-bond acceptors.
+            d_a_cutoff (float): 
+                Donor-acceptor maximum distance (A).
+            d_h_cutoff (float): 
+                Donor-hydrogen maximum distance (A).
+            d_h_a_angle_cutoff (float): 
+                Donor-hydrogen-acceptor minimum angle (degrees).
+            update_selections (bool): 
+                Whether the selections should be updated every frame or not.
+        """
+        super().__init__(**kwargs)
+
+        self.donors_sel: str = donors_sel
+        self.hydrogens_sel: str = hydrogens_sel
+        self.acceptors_sel: str = acceptors_sel
+        self.d_a_cutoff: float = d_a_cutoff
+        self.d_h_cutoff: float = d_h_cutoff
+        self.d_h_a_angle_cutoff: float = d_h_a_angle_cutoff
+        self.update_selections: bool = update_selections
