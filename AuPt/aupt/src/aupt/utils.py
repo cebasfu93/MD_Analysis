@@ -1,5 +1,5 @@
 """Utility functions used here and there throughout the package."""
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import numpy as np
 from MDAnalysis import AtomGroup, Universe
@@ -161,3 +161,18 @@ def print_atom_group_as_vmd_prompt(atom_group: AtomGroup) -> None:
     prompt = "index "
     prompt += " ".join([str(atom.id) for atom in atom_group])
     print(prompt, end='\n\n')
+
+
+def print_atom_group_as_gmx_group(atom_group: AtomGroup, group_name: Optional[str]) -> None:
+    """
+    Prints an MDAnalysis AtomGroup as a Gromacs group.
+
+    Args:
+        atom_group (AtomGroup): 
+            MDAnalysis atom group.
+        group_name (Optional[str]):
+            Gromacs group name.
+    """
+    prompt = f"[ {group_name} ]\n"
+    prompt += " ".join([str(atom.id + 1) for atom in atom_group])
+    print(prompt, end="\n\n")

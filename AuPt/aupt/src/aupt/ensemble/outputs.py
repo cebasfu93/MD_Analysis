@@ -35,7 +35,7 @@ class RadialDistributionFunctionsOutput(BaseOutput):
         n_data_cols = (n_fields - 1) * len(labels)  # -1 to ignore space
         written_output = f"{'space (A)':<10} "
         for label in labels:
-            written_output += f"{label + ' (AA)':<10} {label + ' (res)':<10} "
+            written_output += f"{label:<10} {label + ' (cum)':<10} "
         written_output += "\n"
         for space_point, data in zip(self.space, unzipped_data):
             written_output += f"{space_point:<10.2f} " + \

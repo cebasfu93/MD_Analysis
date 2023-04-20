@@ -7,7 +7,7 @@ setup(
     author="Sebastian Franco Ulloa",
     author_email="sebastian@sebastianfu.com",
     description="Package with analysis tools for molecular dynamics simulations",
-    python_requires=">=3.11.0",
+    python_requires=">=3.7.0",
     packages=find_packages('src'),
     package_dir={'aupt': 'src/aupt'},
     include_package_data=True,
