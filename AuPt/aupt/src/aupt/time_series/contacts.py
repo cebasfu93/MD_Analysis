@@ -6,8 +6,8 @@ from MDAnalysis import AtomGroup, Universe
 from scipy.spatial.distance import cdist
 from tqdm import tqdm
 
-from aupt.time_series.inputs import ContactsNumberInput
-from aupt.time_series.outputs import ContactsNumberOutput
+from aupt.time_series.inputs import ContactsNumberInput, SaltBridgesNumberInput
+from aupt.time_series.outputs import ContactsNumberOutput, SaltBridgesOutput
 from aupt.utils import get_number_of_frames_to_read
 
 
@@ -24,7 +24,7 @@ def number_of_contacts(
         universe (Universe): 
             Universe object with the data from the MD simulation.
         input_control (ContactsNumberInput): 
-            Object with the input parameters needed to compute binding times.
+            Object with the input parameters needed to compute the number of contacts.
 
     Returns:
         ContactsNumberOutput: 
@@ -82,3 +82,48 @@ def number_of_contacts(
     return ContactsNumberOutput(time_points=time_points,
                                 number_of_contacts=n_contacts_wrapped,
                                 number_of_contact_residues=n_residue_contacts_wrapped)
+
+
+def number_of_salt_bridges(
+    universe: Universe,
+    input_control: SaltBridgesNumberInput
+) -> SaltBridgesOutput:
+    """
+    Calculates the number of salt bridges, i.e., contacts between anions and cations.
+
+    Args:
+        universe (Universe): 
+            Universe object with the data from the MD simulation.
+        input_control (ContactsNumberInput): 
+            Object with the input parameters needed to compute number of salt bridges.
+
+    Returns:
+        SaltBridgesOutput: 
+            Analyzed time points, 
+            number of salt bridges
+    """
+
+    delta_t = universe.trajectory.dt
+    n_read = get_number_of_frames_to_read(
+        start_time=input_control.start_time,
+        stop_time=input_control.stop_time,
+        delta_t=delta_t
+    )
+
+    time_points = np.zeros(n_read)
+    n_bridges = np.zeros(n_read, dtype='int')
+
+    print(f"Anions group: {input_control.anions_group_name}")
+    print(f"Cations group: {input_control.cations_group_name}")
+    for i, frame in tqdm(enumerate(universe.trajectory), total=n_read):
+        if frame.time > input_control.stop_time:
+            break
+        if frame.time >= input_control.start_time:
+            time_points[i] = frame.time
+            x_anion = input_control.anions_group.positions
+            x_cation = input_control.cations_group.positions
+            dists = cdist(x_anion, x_cation)
+            n_bridges[i] = np.sum(dists > input_control.distance_threshold)
+
+    return SaltBridgesOutput(time_points=time_points,
+                            number_salt_bridges=n_bridges)

@@ -6,3 +6,4 @@
 **.DS_Store
 **.egg-info
 **.xtc_offsets*
+**/build

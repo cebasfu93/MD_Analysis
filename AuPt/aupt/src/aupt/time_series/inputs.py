@@ -47,6 +47,42 @@ class ContactsNumberInput(BaseInput):
         ]
 
 
+class SaltBridgesNumberInput(BaseInput):
+    """
+    Class with inputs to compute number of salt bridges over time.
+    """
+
+    def __init__(
+        self,
+        cations_group_name: str,
+        anions_group_name: str,
+        distance_threshold: float,
+        **kwargs
+    ) -> None:
+        """
+        Initializer.
+
+        Args:
+            cations_group_name (str): 
+                Name of the group with the cations (only). 
+            anions_group_name (str): 
+                Name of the group with the anions (only). 
+            distance_threshold (float): 
+                Maximum distance (in A) between 2 atoms considered as a salt bridge.
+        """
+
+        super().__init__(**kwargs)
+
+        group_names = [cations_group_name, anions_group_name]
+        self.validate_atom_groups(group_names=group_names)
+
+        self.distance_threshold: float = distance_threshold
+        self.anions_group_name: str = anions_group_name
+        self.cations_group_name: str = cations_group_name
+        self.anions_group: AtomGroup = self.atom_groups[self.anions_group_name]
+        self.cations_group: AtomGroup = self.atom_groups[self.cations_group_name]
+
+
 class HydrogenBondsInput(BaseInput):
     """
     Class with inputs to compute number of hydrogen bonds over time.

@@ -42,6 +42,27 @@ class ContactsNumberOutput(BaseOutput):
 
 
 @dataclass
+class SaltBridgesOutput(BaseOutput):
+    """
+    Class with the outputs of a Salt Bridges calculation.
+    """
+    time_points: FloatArray
+    number_salt_bridges: IntArray
+
+    def __str__(self) -> str:
+        """
+        Writes the dataclass into a tabular string.
+
+        Returns:
+            str: 
+                Output of the analysis as a tabular string.
+        """
+        written_output = f"{'time (ps)':<15} number\n"
+        for time_point, n_salt in zip(self.time_points, self.number_salt_bridges):
+            written_output += f"{time_point:<15.2f} {n_salt:<15}\n"
+        return written_output
+
+@dataclass
 class HydrogenBondsOutput(BaseOutput):
     """
     Class with the outputs of a Hydrogen Bonds calculation.
