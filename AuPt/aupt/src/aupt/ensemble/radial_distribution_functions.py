@@ -49,7 +49,7 @@ def rdf(
             zip(input_control.target_groups_name, input_control.target_groups):
         n_frames = 0
         print(f"Current target: {target_group_name}")
-        counts = np.zeros(len(r_space) - 1)
+        counts = np.zeros(len(r_space) - 1, dtype="float")
         for frame in tqdm(universe.trajectory, total=n_read):
             if frame.time > input_control.stop_time:
                 break

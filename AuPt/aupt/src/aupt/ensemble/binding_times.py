@@ -77,9 +77,9 @@ def binding_time(
     target_residue_numbers = np.zeros_like(binding_times)
 
     start_times = time_points[[on_ndx for on_ndx in on_transitions[1]]]
-    stop_times = time_points[[off_ndx - 1 for off_ndx in off_transitions[1]]]
+    stop_times = time_points[[off_ndx for off_ndx in off_transitions[1]]]
     start_frames = frames_array[[on_ndx for on_ndx in on_transitions[1]]]
-    stop_frames = frames_array[[off_ndx - 1 for off_ndx in off_transitions[1]]]
+    stop_frames = frames_array[[off_ndx for off_ndx in off_transitions[1]]]
     binding_times = stop_times - start_times
     target_residue_numbers = np.array([target_residue_numbers_split[r]
                                        for r in on_transitions[0]]).astype('int')

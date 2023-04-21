@@ -31,7 +31,7 @@ class RadialDistributionFunctionsOutput(BaseOutput):
 
         unzipped_data = np.hstack([np.vstack(
             (self.rdfs[label], self.cumulative_rdfs[label])).T
-            for label in labels]).astype('int')
+            for label in labels])
         n_data_cols = (n_fields - 1) * len(labels)  # -1 to ignore space
         written_output = f"{'space (A)':<10} "
         for label in labels:
@@ -39,7 +39,7 @@ class RadialDistributionFunctionsOutput(BaseOutput):
         written_output += "\n"
         for space_point, data in zip(self.space, unzipped_data):
             written_output += f"{space_point:<10.2f} " + \
-                ("{:<10} " * n_data_cols).format(*data) + "\n"
+                ("{:<10.3f} " * n_data_cols).format(*data) + "\n"
         return written_output
 
 
