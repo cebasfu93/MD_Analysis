@@ -31,7 +31,7 @@ class ContactsNumberOutput(BaseOutput):
             (self.number_of_contacts[label], self.number_of_contact_residues[label])).T
             for label in labels]).astype('int')
         n_data_cols = 2 * len(labels)
-        written_output = f"{'time (ps)':<10} "
+        written_output = f"{'# time (ps)':<13} "
         for label in labels:
             written_output += f"{label + ' (AA)':<15} {label + ' (res)':<15} "
         written_output += "\n"
@@ -57,7 +57,7 @@ class SaltBridgesOutput(BaseOutput):
             str: 
                 Output of the analysis as a tabular string.
         """
-        written_output = f"{'time (ps)':<15} number\n"
+        written_output = f"{'# time (ps)':<13} number\n"
         for time_point, n_salt in zip(self.time_points, self.number_salt_bridges):
             written_output += f"{time_point:<15.2f} {n_salt:<15}\n"
         return written_output
@@ -78,7 +78,7 @@ class HydrogenBondsOutput(BaseOutput):
             str: 
                 Output of the analysis as a tabular string.
         """
-        written_output = f"{'time (ps)':<15} number\n"
+        written_output = f"{'# time (ps)':<13} number\n"
         for time_point, n_hbonds in zip(self.time_points, self.number_hbonds):
             written_output += f"{time_point:<15.2f} {n_hbonds:<15}\n"
         return written_output

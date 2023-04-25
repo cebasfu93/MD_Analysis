@@ -6,6 +6,8 @@ from MDAnalysis import AtomGroup, Universe
 from MDAnalysis.core.groups import Atom
 from scipy.spatial.distance import cdist
 
+from aupt.types import FloatArray
+
 
 def update_dictionary_with_key_control(
     dict1: Dict[Any, Any],
@@ -35,28 +37,28 @@ def update_dictionary_with_key_control(
         f"because there are overlapping keys: {overlapping_keys}")
 
 
-def get_number_of_frames_to_read(
+def get_time_points_in_universe(
     start_time: float,
     stop_time: float,
-    delta_t: float
-) -> int:
+    universe: Universe
+) -> FloatArray:
     """
-    Determines the number of frames to iterate over given 
-    the start and end time of the simulation and the timestep.
+    Extracts the time points in an MD Universe that fall within a time range (interval included).
 
     Args:
         start_time (float): 
-            Start time to analyze (in ps).
+            Start time to analyze (in ps). This point is included.
         stop_time (float): 
-            Stop time to analyze (in ps).
-        delta_t (float): 
-            Timestep of the simulation (in ps).
+            Stop time to analyze (in ps). This point is included.
+        universe (Universe): 
+            MDAnalysis universe with the MD data.
 
     Returns:
-        int: 
-            Number of frames to read.
+        FloatArray: 
+            Array with time points in a trajectory within an interval
     """
-    return int(stop_time // delta_t - start_time // delta_t) + 1
+    return np.array([ts.time for ts in universe.trajectory \
+                     if ts.time >= start_time and ts.time <= stop_time])
 
 
 def get_surface_atoms(

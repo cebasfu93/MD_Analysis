@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from aupt.time_series.inputs import ContactsNumberInput, SaltBridgesNumberInput
 from aupt.time_series.outputs import ContactsNumberOutput, SaltBridgesOutput
-from aupt.utils import get_number_of_frames_to_read
+from aupt.utils import get_time_points_in_universe
 
 
 def number_of_contacts(
@@ -32,16 +32,16 @@ def number_of_contacts(
             number of atom-atom contacts,
             and number of residues with an atom-atom contact.
     """
-
-    delta_t = universe.trajectory.dt
-    n_read = get_number_of_frames_to_read(
+    time_points = get_time_points_in_universe(
         start_time=input_control.start_time,
         stop_time=input_control.stop_time,
-        delta_t=delta_t
+        universe=universe
     )
+    n_read = len(time_points)
+    n_tqdm = int((min(universe.trajectory[-1].time, input_control.stop_time) -
+                  max(0, universe.trajectory[0].time)) / universe.trajectory.dt) + 1
 
     n_target_groups = len(input_control.target_groups_name)
-    time_points = np.zeros(n_read)
     n_contacts = np.zeros((n_target_groups, n_read), dtype='int')
     n_residue_contacts = np.zeros(
         (n_target_groups, n_read),
@@ -53,12 +53,11 @@ def number_of_contacts(
             enumerate(zip(input_control.target_groups, input_control.target_groups_name)):
         print(f"Current target: {target_group_name}")
         target_group_residues: List[AtomGroup] = target_group.split('residue')
-
-        for j, frame in tqdm(enumerate(universe.trajectory), total=n_read):
+        read_frame_ndx = 0
+        for frame in tqdm(universe.trajectory, total=n_tqdm):
             if frame.time > input_control.stop_time:
                 break
             if frame.time >= input_control.start_time:
-                time_points[j] = frame.time
                 x_ref = input_control.ref_group.positions
                 x_targets = [r.positions for r in target_group_residues]
                 dists = [cdist(x_ref, x_target) for x_target in x_targets]
@@ -66,11 +65,12 @@ def number_of_contacts(
                     dist_matrix <= input_control.distance_threshold for dist_matrix in dists]
 
                 n_contacts_now = sum(np.sum(mask) for mask in contacts_masks)
-                n_contacts[i, j] = n_contacts_now
+                n_contacts[i, read_frame_ndx] = n_contacts_now
 
                 n_residue_contacts_now = sum(np.any(mask)
                                              for mask in contacts_masks)
-                n_residue_contacts[i, j] = n_residue_contacts_now
+                n_residue_contacts[i, read_frame_ndx] = n_residue_contacts_now
+                read_frame_ndx += 1
 
     n_contacts_wrapped = dict(
         zip(input_control.target_groups_name, n_contacts)
@@ -102,28 +102,28 @@ def number_of_salt_bridges(
             Analyzed time points, 
             number of salt bridges
     """
-
-    delta_t = universe.trajectory.dt
-    n_read = get_number_of_frames_to_read(
+    time_points = get_time_points_in_universe(
         start_time=input_control.start_time,
         stop_time=input_control.stop_time,
-        delta_t=delta_t
+        universe=universe
     )
-
-    time_points = np.zeros(n_read)
+    n_read = len(time_points)
+    n_tqdm = int((min(universe.trajectory[-1].time, input_control.stop_time) -
+                  max(0, universe.trajectory[0].time)) / universe.trajectory.dt) + 1
     n_bridges = np.zeros(n_read, dtype='int')
 
     print(f"Anions group: {input_control.anions_group_name}")
     print(f"Cations group: {input_control.cations_group_name}")
-    for i, frame in tqdm(enumerate(universe.trajectory), total=n_read):
+    read_frame_ndx = 0
+    for frame in tqdm(universe.trajectory, total=n_tqdm):
         if frame.time > input_control.stop_time:
             break
         if frame.time >= input_control.start_time:
-            time_points[i] = frame.time
             x_anion = input_control.anions_group.positions
             x_cation = input_control.cations_group.positions
             dists = cdist(x_anion, x_cation)
-            n_bridges[i] = np.sum(dists > input_control.distance_threshold)
+            n_bridges[read_frame_ndx] = np.sum(dists > input_control.distance_threshold)
+            read_frame_ndx += 1
 
     return SaltBridgesOutput(time_points=time_points,
                             number_salt_bridges=n_bridges)

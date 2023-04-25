@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from aupt.ensemble.inputs import RadialDistributionFunctionsInput
 from aupt.ensemble.outputs import RadialDistributionFunctionsOutput
-from aupt.utils import get_number_of_frames_to_read
+from aupt.utils import get_time_points_in_universe
 
 
 def rdf(
@@ -32,11 +32,13 @@ def rdf(
     """
     # TODO: Use the COM of each molecule in each target, the COM of each target groups, or the atoms
     # Right now it supports only the latter
-    delta_t = universe.trajectory.dt
-    n_read = get_number_of_frames_to_read(
+    time_points = get_time_points_in_universe(
         start_time=input_control.start_time,
         stop_time=input_control.stop_time,
-        delta_t=delta_t)
+        universe=universe)
+    n_read = len(time_points)
+    n_tqdm = int((min(universe.trajectory[-1].time, input_control.stop_time) -
+                  max(0, universe.trajectory[0].time)) / universe.trajectory.dt) + 1
     rdfs = {}
     rdfs_cum = {}
     r_space = np.linspace(
@@ -47,14 +49,12 @@ def rdf(
     print(f"Reference COM: {input_control.ref_group_name}")
     for target_group_name, target_group in \
             zip(input_control.target_groups_name, input_control.target_groups):
-        n_frames = 0
         print(f"Current target: {target_group_name}")
         counts = np.zeros(len(r_space) - 1, dtype="float")
-        for frame in tqdm(universe.trajectory, total=n_read):
+        for frame in tqdm(universe.trajectory, total=n_tqdm):
             if frame.time > input_control.stop_time:
                 break
             if frame.time >= input_control.start_time:
-                n_frames += 1
                 x_target = target_group.positions
                 if input_control.ref_group_surf is False:
                     x_ref = input_control.ref_group.center_of_mass()
@@ -67,10 +67,10 @@ def rdf(
                     dists = np.min(dists, axis=0)
                 counts += np.histogram(dists, bins=r_space)[0]
         # Average particles counted in target group
-        n_target = np.sum(counts) / n_frames
+        n_target = np.sum(counts) / n_read
         v_shells = 4 * np.pi * (r_space[1:] ** 3 - r_space[:-1] ** 3) / 3
         homo_dens = 3 * n_target / (4 * np.pi * r_space[-1] ** 3)
-        counts /= n_frames  # Averages number of target particles at each bin over time
+        counts /= n_read  # Averages number of target particles at each bin over time
         # Divide on the number of reference particles (1 center of mass)
         counts /= 1 if input_control.ref_group_surf is False \
             else len(input_control.ref_group)

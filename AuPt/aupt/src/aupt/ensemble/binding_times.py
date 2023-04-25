@@ -9,7 +9,7 @@ from tqdm import tqdm
 from aupt.ensemble.inputs import BindingTimesInput
 from aupt.ensemble.outputs import BindingTimesOutput
 
-from aupt.utils import get_number_of_frames_to_read
+from aupt.utils import get_time_points_in_universe
 
 
 def binding_time(
@@ -35,29 +35,31 @@ def binding_time(
             RuntimeError:
                 If target_group_rescom is True
     """
-    delta_t = universe.trajectory.dt
-    n_read = get_number_of_frames_to_read(
+    time_points = get_time_points_in_universe(
         start_time=input_control.start_time,
         stop_time=input_control.stop_time,
-        delta_t=delta_t)
+        universe=universe)
+    n_read = len(time_points)
+    n_tqdm = int((min(universe.trajectory[-1].time, input_control.stop_time) -
+                  max(0, universe.trajectory[0].time)) / universe.trajectory.dt) + 1
+    frames_array = np.zeros(n_read, dtype='int')
+
     print(f"Reference group: {input_control.ref_group_name}")
     print(f"Target group name: {input_control.target_group_name}")
     target_group_split: List[AtomGroup] = input_control.target_group.split(
         'residue')
     target_residue_numbers_split: List[int] = [
         g[0].resnum for g in target_group_split]
-
     n_targets = len(target_group_split)
-    time_points = np.zeros(n_read)
-    frames_array = np.zeros(n_read, dtype='int')
+
     # start and end with all contacts off
     bound_grid = np.zeros((n_targets, n_read + 2), dtype='int')
-    for j, frame in tqdm(enumerate(universe.trajectory, 1), total=n_read):
+    read_frame_ndx = 0
+    for frame in tqdm(universe.trajectory, total=n_tqdm):
         if frame.time > input_control.stop_time:
             break
         if frame.time >= input_control.start_time:
-            time_points[j-1] = frame.time
-            frames_array[j-1] = frame.frame
+            frames_array[read_frame_ndx] = frame.frame
             x_ref = input_control.ref_group.positions\
                 if input_control.ref_group_com is False\
                 else input_control.ref_group.center_of_mass()[..., np.newaxis]
@@ -68,7 +70,9 @@ def binding_time(
             target_in_contact = [
                 np.any(dist < input_control.distance_threshold) for dist in dists
             ]
-            bound_grid[target_in_contact, j] = 1  # there is contact
+            # there is contact
+            bound_grid[target_in_contact, read_frame_ndx + 1] = 1
+            read_frame_ndx += 1
     transitions = bound_grid[:, 1:] - bound_grid[:, :-1]
     on_transitions = np.where(transitions == 1)
     off_transitions = np.where(transitions == -1)
@@ -76,11 +80,12 @@ def binding_time(
     binding_times = np.zeros(len(on_transitions[0]))
     target_residue_numbers = np.zeros_like(binding_times)
 
+    delta_t = universe.trajectory[0].dt
     start_times = time_points[[on_ndx for on_ndx in on_transitions[1]]]
-    stop_times = time_points[[off_ndx for off_ndx in off_transitions[1]]]
+    stop_times = time_points[[off_ndx - 1 for off_ndx in off_transitions[1]]]
     start_frames = frames_array[[on_ndx for on_ndx in on_transitions[1]]]
-    stop_frames = frames_array[[off_ndx for off_ndx in off_transitions[1]]]
-    binding_times = stop_times - start_times
+    stop_frames = frames_array[[off_ndx - 1 for off_ndx in off_transitions[1]]]
+    binding_times = (stop_frames - start_frames + 1) * delta_t
     target_residue_numbers = np.array([target_residue_numbers_split[r]
                                        for r in on_transitions[0]]).astype('int')
 

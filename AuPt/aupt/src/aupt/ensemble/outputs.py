@@ -33,13 +33,13 @@ class RadialDistributionFunctionsOutput(BaseOutput):
             (self.rdfs[label], self.cumulative_rdfs[label])).T
             for label in labels])
         n_data_cols = (n_fields - 1) * len(labels)  # -1 to ignore space
-        written_output = f"{'space (A)':<10} "
+        written_output = f"{'# space (A)':<8} "
         for label in labels:
             written_output += f"{label:<10} {label + ' (cum)':<10} "
         written_output += "\n"
         for space_point, data in zip(self.space, unzipped_data):
             written_output += f"{space_point:<10.2f} " + \
-                ("{:<10.3f} " * n_data_cols).format(*data) + "\n"
+                ("{:<10.5f} " * n_data_cols).format(*data) + "\n"
         return written_output
 
 
@@ -64,7 +64,7 @@ class BindingTimesOutput(BaseOutput):
                 Output of the analysis as a tabular string.
         """
         n_fields = len(fields(self))
-        written_output = ""
+        written_output = "# "
         for field in fields(self):
             written_output += f"{field.name:<20} "
         written_output += "\n"
