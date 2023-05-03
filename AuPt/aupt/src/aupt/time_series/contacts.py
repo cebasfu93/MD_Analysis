@@ -122,7 +122,7 @@ def number_of_salt_bridges(
             x_anion = input_control.anions_group.positions
             x_cation = input_control.cations_group.positions
             dists = cdist(x_anion, x_cation)
-            n_bridges[read_frame_ndx] = np.sum(dists > input_control.distance_threshold)
+            n_bridges[read_frame_ndx] = np.sum(dists <= input_control.distance_threshold)
             read_frame_ndx += 1
 
     return SaltBridgesOutput(time_points=time_points,
